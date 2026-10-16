@@ -69,7 +69,8 @@ def main() -> int:
     with sync_playwright() as p:
         # Bu test Ekip alaninin KART gorunumunu sinar (WebGL yokken dusulen yol);
         # 3B ofis tests/ofis_arayuz_testi.py'de.
-        tarayici = p.chromium.launch(channel="chrome", headless=True, args=["--disable-3d-apis"])
+        from tarayici_test_ortami import baslat as test_tarayicisi
+        tarayici = test_tarayicisi(p, headless=True, args=["--disable-3d-apis"])
         sayfa = tarayici.new_page(viewport={"width": 1100, "height": 820})
         hatalar: list[str] = []
         sayfa.on("pageerror", lambda e: hatalar.append(str(e)))

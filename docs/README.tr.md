@@ -231,7 +231,22 @@ python tests/eylem_testi.py                  # tarayici eylem izinleri (site pro
 python tests/sohbet_testi.py                 # sohbet kalicilik testleri
 ```
 
+## Tanılama
+
+`python -m pevrai --tani` paylaşılabilir destek çıktısı üretir; kişisel yolları
+ve ham hata metinlerini gizler. Sürüm, bileşenlerin var/yok durumu ve anahtarın
+kaynak türü korunur. İsteğe bağlı paket eksikliği kalan denetimleri durdurmaz.
+
+Yerel inceleme için `python -m pevrai --tani-ayrintili` yolları ve hata
+ayrıntılarını gösterir. Çıktıyı paylaşmadan önce incele; kişisel bilgiler veya
+hataya gömülmüş sırlar içerebilir.
+
+Bu değişiklikler şu anda kaynakta bulunuyor; yayımlanmış 0.1.1 kurulumuna
+henüz dahil değildir.
+
 ## Belgeler
+
+- [PROJE_TANITIMI.md](PROJE_TANITIMI.md) — özellikler, kullanım senaryoları, mimari ve güncel durum
 
 - [ROADMAP.md](ROADMAP.md) — fazlar, çıktılar, kabul kriterleri
 - [ARCHITECTURE.md](ARCHITECTURE.md) — döngü, bileşenler, veri akışı

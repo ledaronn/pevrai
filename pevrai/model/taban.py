@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Iterator
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +118,16 @@ class Saglayici:
         """Tek model istegi. araclar None ise hic arac semasi gitmez; zorla_arac
         verilirse yalnizca o arac sunulur ve cagrisi ZORLANIR."""
         raise NotImplementedError
+
+    def uret_akis(self, model: str, gecmis: list[dict], sistem: str,
+                  araclar: list[dict] | None, zorla_arac: str | None = None) -> Iterator[str | Yanit]:
+        """Akışlı model isteği. Metin parçaları (`str`) geldikçe yield edilir;
+        en sonda tamamlanmış `Yanit` nesnesi yield edilir.
+        Varsayılan uygulama: akış desteklemeyen adaptörler için tek seferde üretip döner."""
+        yanit = self.uret(model, gecmis, sistem, araclar, zorla_arac)
+        if yanit.metin:
+            yield yanit.metin
+        yield yanit
 
     def modeller(self) -> list[str]:
         """Hesabin erisebildigi model adlari (ag cagrisi). Desteklenmiyorsa []."""

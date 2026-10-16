@@ -97,7 +97,8 @@ def main() -> int:
     ikon_kontrolu()
     print("\n1) Ag alani (headless Chrome)")
     with sync_playwright() as p:
-        tarayici = p.chromium.launch(channel="chrome", headless=True)
+        from tarayici_test_ortami import baslat as test_tarayicisi
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1180, "height": 820})
         hatalar: list[str] = []
         sayfa.on("pageerror", lambda e: hatalar.append(str(e)))

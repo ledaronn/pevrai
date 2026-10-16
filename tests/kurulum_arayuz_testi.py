@@ -66,7 +66,8 @@ def uygulanan(sayfa):
 
 def main():
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(channel="chrome", headless=True)
+        from tarayici_test_ortami import baslat as test_tarayicisi
+        browser = test_tarayicisi(pw, headless=True)
 
         print("\n1) Kurulum gerekli degilse ekran acilmaz")
         sayfa, hatalar = sayfa_ac(browser, {**DURUM, "gerekli": False})

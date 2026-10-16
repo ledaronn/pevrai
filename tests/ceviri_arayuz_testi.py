@@ -59,7 +59,8 @@ SAHTE = """() => {
 
 with sync_playwright() as p:
     # SwiftShader: Ekip alani 3B ofisle acilsin (ofis metinleri de taransin)
-    tarayici = p.chromium.launch(channel="chrome", headless=True,
+    from tarayici_test_ortami import baslat as test_tarayicisi
+    tarayici = test_tarayicisi(p, headless=True,
                                  args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
     sayfa = tarayici.new_page(viewport={"width": 1280, "height": 900})
     hatalar = []

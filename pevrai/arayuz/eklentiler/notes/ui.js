@@ -71,8 +71,8 @@ window.PluginViews.notes = async function(host) {
     if(sources.length){const links=actions(editor);for(const uri of sources.slice(0,10))links.append(button(T("Kaynak sayfasını aç"),async()=>{const r=await window.pywebview.api.okuma_kaynak_ac(uri);if(!r.ok)throw new Error(r.hata);},"ep-quiet","book"));}
   }
   async function load(preferred=null) {
-    const sequence=++request,query=search.value.trim();
-    const result=query?await call("note_search",{query,scope:mode,limit:30,offset}):await call("note_list",{limit:30,offset,...(mode==="deleted"?{include_deleted:true,deleted:true}:{archived:mode==="archived"})});
+    const sequence=++request,rawQuery=search.value.trim(),sem=rawQuery.startsWith("~"),query=sem?rawQuery.slice(1).trim():rawQuery;
+    const result=query?await call("note_search",{query,scope:mode,limit:30,offset,...(sem?{semantic:true}:{})}):await call("note_list",{limit:30,offset,...(mode==="deleted"?{include_deleted:true,deleted:true}:{archived:mode==="archived"})});
     if(sequence!==request||!list.isConnected)return;P.clear(list);P.clear(pager);
     if(!result.items.length){P.clear(editor);P.empty(editor,"fikir","Düşüncelerine yer aç.","Bir not yaz; sonra derslerinle ve projelerinle bağla.",["İlk notunu yaz",()=>P.quickNote()]);}
     for(const note of result.items){const b=button("",()=>select(note.id),"ep-note-choice");

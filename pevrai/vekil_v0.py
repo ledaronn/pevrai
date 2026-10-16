@@ -119,44 +119,17 @@ def mcp_arka_planda_baglan() -> None:
     """Pencere acilirken: kullanici ilk gorevi yazana kadar sunucular hazir olsun."""
     threading.Thread(target=mcp_baglan, kwargs={"sessiz": False}, daemon=True, name="mcp-baglan").start()
 
-# Toplu onaya ASLA girmeyen riskler.
-# Toplu onayın KENDİSİ artık modül seviyesinde değil, Oturum içinde (olaylar.py):
-# "yeni sohbet toplu onayları sıfırlar" kuralı böylece bedava geliyor.
-TOPLU_ONAY_YASAK = {"DESTRUCTIVE"}
-
-# Risk seviyesinden BAĞIMSIZ, ada göre toplu onaydan çıkarılan araçlar.
-# write_file de WRITE riskiyle toplu onaya açık ama journal.yedekle() ile
-# yedekleniyor ve --geri-al ile dönüyor. converter.convert'in yazdığı dosya
-# MCP sunucusu tarafında üretiliyor, journal'a hiç girmiyor — yedeği/geri
-# alması yok. Toplu onay bu asimetriyi gizler: "Tümü"ye basan kullanıcı,
-# ikinci bir dönüşümün üzerine yazdığını hiç görmez. Bkz. DEVIR.md §10.
-TOPLU_ONAY_YASAK_ARAC = {"converter.convert"}
-
-
-def _toplu_sunulabilir_mi(arac: str, risk: str, yikici: bool) -> bool:
-    """Bu araç için "Tümü" düğmesi RENDER EDİLEBİLİR mi? Saf karar.
-
-    Faz 7 Aşama 1: kural eskiden `_onay_gerekli_mi` içinde satır arasındaydı
-    ve MCP araçlarını ADA göre dışlıyordu (`TOPLU_ONAY_YASAK_ARAC =
-    {"converter.convert"}`). Gerekçesi ise ada değil SINIFA aitti: "MCP
-    sunucusu tarafında üretilen dosya journal'a hiç girmiyor, yedeği/geri
-    alması yok." Bu, converter.convert'e özgü bir durum değil — BÜTÜN MCP
-    yazma araçları için geçerli. Ada bağlı liste, sınıflandırılan her yeni
-    MCP yazma aracında sessizce delinirdi: kimsenin listeye eklemeyi
-    hatırlaması gerekmesin (mcp_bridge.dis_kaynak'ın "istisna listesi
-    TUTULMUYOR" kararıyla aynı gerekçe).
-
-    MCP aracı ayrımı ada bakarak yapılır ("sunucu.arac"): köprü araçları bu
-    biçimde kaydeder, yerel araçların adında nokta yoktur.
-    """
-    if yikici or risk in TOPLU_ONAY_YASAK:
-        return False
-    if arac in TOPLU_ONAY_YASAK_ARAC:
-        return False
-    return "." not in arac        # MCP araçları toplu onaya HİÇ girmez
-
-# Fark gösteriminde azami satır (ARAYUZ.md 4.5).
-FARK_AZAMI_SATIR = 200
+from pevrai.onay import (  # noqa: F401
+    TOPLU_ONAY_YASAK,
+    TOPLU_ONAY_YASAK_ARAC,
+    FARK_AZAMI_SATIR,
+    _toplu_sunulabilir_mi,
+    _yikici_yazma_mi,
+    _etki_cumlesi,
+    _edit_eslesme,
+    _fark_uret,
+    _onay_gerekli_mi,
+)
 
 # evals.py çağrılan araçları buradan okur.
 # OTOMATIK_ONAY bayrağı KALDIRILDI; eval artık kendi onay sağlayıcısını enjekte ediyor.
@@ -337,154 +310,7 @@ def _gorev_araclari(profil: str | None, kapali: Iterable[str] = (),
     return secilen
 
 
-def _yikici_yazma_mi(arac: str, args: dict, yol: Path | None) -> bool:
-    """İçeriği yok eden write_file fiilen silmedir: toplu onayı atlar, ayrı sorulur."""
-    if arac != "write_file":
-        return False
-    hedef = yol or Path(args.get("path", ""))
-    if not hedef.exists():
-        return False
-    yeni = len(str(args.get("content", "")).encode("utf-8"))
-    eski = hedef.stat().st_size
-    return yeni == 0 or (eski > 0 and yeni < eski * 0.2)
 
-
-def _etki_cumlesi(arac: str, args: dict, yol: Path | None) -> str:
-    """Onay kartındaki tek cümlelik etki. Araca özgü (ARAYUZ.md 4.4)."""
-    hedef = yol or Path(args.get("path", ""))
-    if arac == "write_file":
-        # Boyut SOYLENMELI: onay kartinin isi kullanicinin neye evet dedigini
-        # gostermek. "UZERINE YAZILACAK" tek basina 5933 baytlik bir farki da
-        # 12 baytlik bir farki da ayni gosteriyordu (gozlemlendi: kum/README.md
-        # onaylandi ve icerik sessizce bozuldu, bkz. ROADMAP Faz 5b).
-        yeni_bayt = len(str(args.get("content", "")).encode("utf-8"))
-        if not hedef.exists():
-            return t("yeni dosya oluşturulacak ({bayt} bayt)", bayt=yeni_bayt)
-        try:
-            eski_bayt = hedef.stat().st_size
-        except OSError:
-            return t("ÜZERİNE YAZILACAK ({bayt} bayt, yedek alınır)", bayt=yeni_bayt)
-        return t("ÜZERİNE YAZILACAK: {eski} bayt -> {yeni} bayt ({fark:+d}, yedek alınır)",
-                 eski=eski_bayt, yeni=yeni_bayt, fark=yeni_bayt - eski_bayt)
-    if arac == "edit_file":
-        eski_p, yeni_p = str(args.get("old_text", "")), str(args.get("new_text", ""))
-        sayi = _edit_eslesme(hedef, eski_p)
-        if sayi == 0:
-            return t("düzenleme UYGULANMAYACAK: old_text bulunamadı (araç hata döndürecek)")
-        if sayi != 1:
-            return t("düzenleme UYGULANMAYACAK: old_text {sayi} kez geçiyor (araç hata döndürecek)", sayi=sayi)
-        return t("yerinde düzenleme: {eski_satir} satır -> {yeni_satir} satır, "
-                 "{eski_kr} -> {yeni_kr} karakter (yedek alınır)",
-                 eski_satir=eski_p.count("\n") + 1,
-                 yeni_satir=(yeni_p.count("\n") + 1) if yeni_p else 0,
-                 eski_kr=len(eski_p), yeni_kr=len(yeni_p))
-    if arac == "mkdir":
-        return t("yeni klasör oluşturulacak (boşken geri alınabilir)")
-    if arac == "open_file":
-        # Kullanici NEYE evet diyor: kisayolda gercek hedef + argumanlar,
-        # .exe'de CALISTIRILACAK. hedef_cozumle reddedecekse kart onu soyler.
-        from pevrai.araclar import acma as _acma
-        if hedef.exists():
-            tur, aciklama, hata = _acma.hedef_cozumle(hedef, B.politika)
-            return hata if hata else aciklama
-        return t("'{ad}' açma klasöründe yok (araç hata döndürecek)", ad=hedef.name)
-    if arac == "move":
-        return t("dosya KAYNAKTAN KAYBOLACAK -> {hedef}", hedef=args.get("dst", "?"))
-    if arac == "rename":
-        return t("yeni ad: {ad}", ad=args.get("new_name", "?"))
-    if arac == "trash":
-        return t("çöp klasörüne taşınacak (kalıcı silinmez, geri alınabilir)")
-    if arac == "browser_open":
-        return t("açılacak adres: {adres}", adres=args.get("url", "?"))
-    if arac == "browser_download":
-        return t("dosya internetten inecek ({klasor} klasörüne)", klasor=journal.INEN)
-    if arac == "browser_click":
-        return t("'{ad}' ögesine tıklanacak", ad=args.get("name", "?"))
-    if arac == "browser_fill":
-        return t("'{ad}' alanına yazılacak", ad=args.get("name", "?"))
-    if arac.startswith("converter."):
-        # Kaynak adı SÖYLENMELİ: model istediği dosyayı bulamayınca başkasını
-        # ikame edip dönüştürebiliyor (gözlemlendi: ornek.md yerine README.md,
-        # ve kullanıcı "dönüştürülecek -> kum" kartına bakıp onaylıyor).
-        # Üzerine yazma UYARILMALI: MCP sunucusu journal yedeği almıyor,
-        # buradaki üzerine yazmanın geri alınması YOK.
-        kaynak = Path(str(args.get("src", "?"))).name
-        klasor = str(args.get("dst_dir", "?"))
-        bicim = str(args.get("target_format", "")).lstrip(".").lower()
-        if not bicim.isalnum():
-            return t("{kaynak} dönüştürülecek -> {klasor}", kaynak=kaynak, klasor=klasor)
-        cikti = Path(klasor) / f"{Path(str(args.get('src', ''))).stem}.{bicim}"
-        if cikti.exists():
-            if getattr(B.kopru, "geri_alinabilir", lambda _: False)(arac):
-                return t("{kaynak} -> {cikti} ({klasor}) — MEVCUT DOSYA YEDEKLENECEK, geri alınabilir", kaynak=kaynak, cikti=cikti.name, klasor=klasor)
-            return t("{kaynak} -> {cikti} ({klasor}) — MEVCUT DOSYANIN ÜSTÜNE YAZILACAK, geri alınamaz",
-                     kaynak=kaynak, cikti=cikti.name, klasor=klasor)
-        return f"{kaynak} -> {cikti.name} ({klasor})"
-    return t("{arac} çalıştırılacak", arac=arac)
-
-
-def _edit_eslesme(hedef: Path, eski_metin: str) -> int:
-    """edit_file: old_text dosyada kac kez geciyor (onay karti icin on izleme)."""
-    try:
-        return hedef.read_text(encoding="utf-8").count(eski_metin) if eski_metin else 0
-    except (OSError, UnicodeDecodeError):
-        return 0
-
-
-def _fark_uret(arac: str, args: dict, yol: Path | None) -> str | None:
-    """Üzerine yazmada satır bazlı fark. Onayı anlamlı kılan tek şey (ARAYUZ.md 4.5).
-
-    write_file: tam içerik farkı. edit_file: değişiklik uygulanmış hâlin farkı
-    (old_text tek eşleşiyorsa; yoksa fark yok, araç zaten reddedecek).
-    Terminalde (f) ile açılır, GUI'de onay kartının içinde render edilir.
-    """
-    if arac not in ("write_file", "edit_file") or yol is None or not yol.exists() or yol.is_dir():
-        return None
-    try:
-        eski_metin = yol.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-    eski = eski_metin.splitlines()
-
-    if arac == "edit_file":
-        e, y = str(args.get("old_text", "")), str(args.get("new_text", ""))
-        if not e or eski_metin.count(e) != 1:
-            return None
-        yeni = eski_metin.replace(e, y, 1).splitlines()
-    else:
-        yeni = str(args.get("content", "")).splitlines()
-    satirlar = list(difflib.unified_diff(eski, yeni, t("mevcut"), t("yeni"), lineterm="", n=2))
-    if not satirlar:
-        return t("(içerik aynı)")
-    if len(satirlar) > FARK_AZAMI_SATIR:
-        kalan = len(satirlar) - FARK_AZAMI_SATIR
-        satirlar = satirlar[:FARK_AZAMI_SATIR] + [t("... [fark kırpıldı, {satir} satır daha var]", satir=kalan)]
-    return "\n".join(satirlar)
-
-
-def _onay_gerekli_mi(oturum: Oturum, arac: str, args: dict,
-                     risk: str, yol: Path | None) -> bool:
-    """Onay isteğini kurar; kararı olaylar.onay_iste verir.
-
-    "Tümü" sunulabilir mi sorusunun cevabı burada hesaplanır, sağlayıcıda değil —
-    DESTRUCTIVE ve yıkıcı yazma kuralı tek yerde kalsın diye.
-    """
-    yikici = _yikici_yazma_mi(arac, args, yol)
-    istek = OnayIstegi(
-        arac=arac,
-        args=_args_gizle(args),
-        risk=risk,
-        etki=_etki_cumlesi(arac, args, yol),
-        yikici=yikici,
-        toplu_sunulabilir=_toplu_sunulabilir_mi(arac, risk, yikici),
-        fark=_fark_uret(arac, args, yol),
-    )
-    if arac in B.kopru.araclar and risk not in {"READ"}:
-        from dataclasses import replace
-        supported = getattr(B.kopru, "geri_alinabilir", lambda _: False)(arac)
-        note = t("Bu aracın dosya çıktıları yedeklenir ve geri alınabilir.") if supported else t("Bu dış aracın işlemleri Pevrai'nın geri alma kapsamına girmez.")
-        istek = replace(istek, etki=istek.etki + " " + note)
-    return onay_iste(oturum, istek)
 
 
 def _tarayici_karesi(oturum: Oturum, arac: str) -> None:
@@ -535,7 +361,7 @@ def _model_cagir(saglayici: modelkat.Saglayici, gecmis: list, model: str, rol: s
     mantigi ikisi icin de AYNI: zorlanmis cagri da gercek bir istek, sayilmali.
 
     istek_sayaci verilirse GOREV BASINA gonderilen istek sayisi burada
-    birikir (bkz. gate.butce_karari). Sayac journal.kota_artir ile TAM AYNI
+    birikir (bkz. gate.butce_karari). Sayac journal.kota_ayir ile TAM AYNI
     noktada artiyor — ikisi de "bir istek gonderildi" olayini sayiyor ve
     ayri yerlerde artsalardi yeniden deneme dallarindan birinde sessizce
     ayrisirlardi. Her DENEME ayri sayilir: 429/503'te yeniden gonderilen
@@ -543,15 +369,11 @@ def _model_cagir(saglayici: modelkat.Saglayici, gecmis: list, model: str, rol: s
     for deneme in range(API_DENEME):
         if oturum is not None:
             oturum.kontrol()
-        # Duvar sayactan ÖNCE ve her denemede ayrı: her deneme ayrı bir istek
-        # ve ayrı sayılıyor, o yüzden ayrı kontrol edilmeli.
-        # Karar gate.tavan_karari'nda; burada sadece sayaç okunur, istisna atılır.
-        # AÇIK: kota.json yazılamazsa sayaç büyümez ve duvar sessizce çalışmaz.
-        # Fail-open bilinçli — disk hatası yüzünden Pevrai'yı kilitlemek orantısız.
-        dolu = tavan_karari(rol, journal.kota_sayaclari(), B.politika.gunluk_tavan)
+        # Check + reserve + durable write share one mandatory process lock.
+        # Counter failure blocks limited requests before any provider call.
+        dolu = journal.kota_ayir(rol, B.politika.gunluk_tavan)
         if dolu:
             raise TavanDoldu(rol, *dolu)
-        journal.kota_artir(rol)
         if istek_sayaci is not None:
             # "istek" = BU TURUN sayaci (butce her devam turunda sifirlanir).
             # "toplam" = gorevin BASINDAN beri, hic sifirlanmaz — donus
@@ -561,13 +383,37 @@ def _model_cagir(saglayici: modelkat.Saglayici, gecmis: list, model: str, rol: s
         try:
             # araclar_kapali: None — saglayiciya "arac yok" demenin tek yolu;
             # bos liste bile bir sema parcasi tasir. Saglayici farklari
-            # (Gemini nokta kodlamasi, OpenAI tool_calls, Anthropic bloklari)
-            # pevrai.model adaptorlerinde; dongu tek bicim gorur.
-            return saglayici.uret(
-                model, gecmis,
-                sistem_talimati(araclar_var=not araclar_kapali, gosterilen=gosterilen),
-                None if araclar_kapali else (arac_listesi if arac_listesi is not None else B.semalar),
-                zorla_arac)
+            sistem = sistem_talimati(araclar_var=not araclar_kapali, gosterilen=gosterilen)
+            arac_semalari = None if araclar_kapali else (arac_listesi if arac_listesi is not None else B.semalar)
+
+            if hasattr(saglayici, "uret_akis"):
+                yanit = None
+                metin_akis: list[str] = []
+                try:
+                    for parca in saglayici.uret_akis(model, gecmis, sistem, arac_semalari, zorla_arac):
+                        if oturum is not None:
+                            oturum.kontrol()
+                        if isinstance(parca, str):
+                            if parca:
+                                metin_akis.append(parca)
+                                if oturum is not None:
+                                    oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": parca, "akis": True}))
+                        elif isinstance(parca, modelkat.Yanit):
+                            yanit = parca
+                except Durduruldu:
+                    kesilen_metin = "".join(metin_akis)
+                    if kesilen_metin and oturum and oturum.gecmis_koru:
+                        kesik_icerik = modelkat.model_turu(kesilen_metin + " (durduruldu)", [])
+                        kesik_icerik["kesildi"] = True
+                        gecmis.append(kesik_icerik)
+                    raise
+
+                if yanit is None:
+                    birlesik = "".join(metin_akis) or None
+                    yanit = modelkat.Yanit(metin=birlesik, cagrilar=[], icerik=modelkat.model_turu(birlesik, []))
+                return yanit
+            else:
+                return saglayici.uret(model, gecmis, sistem, arac_semalari, zorla_arac)
         except OranSiniri:
             # 429 = hız limiti. Genelde dakikalık pencere, beklersek geçer.
             # oran_bekle=False: model zincirinde sırada başka model var —
@@ -839,8 +685,14 @@ def _gozetimsiz_surdur(gorev: str, mod: str | None, oturum: Oturum | None,
     while True:
         # Kota HER TURDA taze okunuyor: devam zinciri sirasinda baska bir
         # gorev (GUI'de) da istek harcamis olabilir.
-        kota_dolu = tavan_karari(rol, journal.kota_sayaclari(),
-                                  B.politika.gunluk_tavan) is not None
+        try:
+            kota_dolu = (bool(B.politika.gunluk_tavan.get(rol, 0)) and
+                         tavan_karari(rol, journal.kota_sayaclari(),
+                                     B.politika.gunluk_tavan) is not None)
+        except journal.KotaHatasi as e:
+            oturum.yayinla(Olay(OlayTipi.HATA, {"mesaj": str(e)}))
+            return _ozet_bitir(metin, kayit, kimlik, devam_sayisi, istek_sayaci,
+                                rol, baslangic_zamani, _journal_baslangici, str(e), oturum)
         karar = devam_karari(devam_sayisi, azami_devam,
                               yeni_yazma_var_mi=(kisir_tur < 2),
                               kota_dolu_mu=kota_dolu)
@@ -919,9 +771,13 @@ def _ozet_bitir(metin: str, kayit: dict, kimlik: str | None, devam_sayisi: int,
     kayit["durum_kimligi"] = kimlik
     # Kota MODEL CAGIRMADAN okunuyor: journal.kota_sayaclari diskteki
     # sayaci okur, gate.Politika tavanlari tasir.
-    sayaclar = journal.kota_sayaclari()
-    kayit["kota"] = {r: (sayaclar.get(r, 0), B.politika.gunluk_tavan.get(r, 0))
-                      for r in (rol,)}
+    try:
+        sayaclar = journal.kota_sayaclari()
+        kayit["kota"] = {r: (sayaclar.get(r, 0), B.politika.gunluk_tavan.get(r, 0))
+                          for r in (rol,)}
+    except journal.KotaHatasi:
+        kayit["kota"] = {}
+        kayit["kota_hatasi"] = t("Günlük kullanım sayacı okunamadı; kalan kullanım bilinmiyor.")
     # GUVENILIR yazmalar: modelin iddiasi DEGIL, journal kaydi.
     kayit["yazmalar"] = [
         (f"{k['yol']} -> {k.get('yeni_yol', '?')} ({k.get('islem', 'tasindi')})"
@@ -1099,6 +955,12 @@ def _calistir_ic(gorev: str, mod: str | None, oturum: Oturum | None,
                     oturum.yayinla(Olay(OlayTipi.MODEL_GECIS, {
                         "eski": eski.etiket, "yeni": halka.etiket, "sebep": "limit",
                         "bitis": bitis.isoformat(timespec="minutes")}))
+        except journal.KotaHatasi as e:
+            mesaj = str(e)
+            if kayit is not None:
+                kayit.setdefault("engeller", []).append((devam_sayisi, mesaj))
+            oturum.yayinla(Olay(OlayTipi.HATA, {"mesaj": mesaj}))
+            return mesaj, None
         except TavanDoldu as e:
             veri, metin = tavan_olayi(e, adim)
             if kayit is not None:
@@ -1152,7 +1014,7 @@ def _calistir_ic(gorev: str, mod: str | None, oturum: Oturum | None,
             # Nihai yanıt da geçmişe girer, yoksa sonraki görev ne dediğini bilmez.
             if oturum.gecmis_koru:
                 gecmis.append(yanit.icerik)
-            oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": metin}))
+            oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": metin, "bitti": True}))
             # kimlik None: gorev BITTI, surdurulecek bir durum yok.
             return metin, None
 

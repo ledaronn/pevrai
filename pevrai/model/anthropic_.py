@@ -5,7 +5,7 @@ kurulurken anlasilir bir hata verilir (import burada, modul yuklenirken degil).
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 from pevrai.model.taban import (AracCagrisi, ModelHatasi, OranSiniri, Saglayici, kimlikleri_tamamla,
                                 arac_adi_coz, arac_adi_kodla,
@@ -95,6 +95,49 @@ class Anthropic(Saglayici):
         return Yanit(metin=metin, cagrilar=cagrilar, icerik=model_turu(metin, cagrilar),
                      girdi_token=int(getattr(k, "input_tokens", 0) or 0),
                      cikti_token=int(getattr(k, "output_tokens", 0) or 0))
+
+    def uret_akis(self, model: str, gecmis: list[dict], sistem: str,
+                  araclar: list[dict] | None, zorla_arac: str | None = None) -> Iterator[str | Yanit]:
+        sdk = self._sdk
+        ek: dict[str, Any] = {}
+        if araclar is not None:
+            ek["tools"] = self._araclar(araclar)
+            if zorla_arac:
+                ek["tool_choice"] = {"type": "tool", "name": arac_adi_kodla(zorla_arac)}
+        try:
+            with self._client.messages.stream(
+                model=model, max_tokens=MAX_TOKENS, system=sistem or sdk.NOT_GIVEN,
+                messages=self._mesajlar(gecmis), **ek) as stream:
+                for text in stream.text_stream:
+                    yield text
+                yanit = stream.get_final_message()
+        except sdk.RateLimitError as e:
+            raise OranSiniri(429, str(getattr(e, "message", e))) from e
+        except sdk.APITimeoutError as e:
+            raise ZamanAsimi(str(e)) from e
+        except sdk.APIStatusError as e:
+            kod = int(getattr(e, "status_code", 0) or 0)
+            mesaj = str(getattr(e, "message", e))
+            if kod >= 500:
+                raise SunucuHatasi(kod, mesaj) from e
+            raise ModelHatasi(kod, mesaj) from e
+        except sdk.APIConnectionError as e:
+            raise ModelHatasi(0, f"baglanti hatasi: {e}") from e
+
+        metin_parcalari, cagrilar = [], []
+        for blok in yanit.content:
+            if blok.type == "text":
+                metin_parcalari.append(blok.text)
+            elif blok.type == "tool_use":
+                cagrilar.append(AracCagrisi(ad=arac_adi_coz(blok.name), args=dict(blok.input or {}), id=blok.id))
+        metin = "".join(metin_parcalari) or None
+        if yanit.stop_reason == "refusal":
+            metin = (metin or "") + "\n(model bu istegi guvenlik gerekcesiyle reddetti)"
+        k = yanit.usage
+        son_yanit = Yanit(metin=metin, cagrilar=cagrilar, icerik=model_turu(metin, cagrilar),
+                          girdi_token=int(getattr(k, "input_tokens", 0) or 0),
+                          cikti_token=int(getattr(k, "output_tokens", 0) or 0))
+        yield son_yanit
 
     def modeller(self) -> list[str]:
         return sorted(m.id for m in self._client.models.list())

@@ -562,6 +562,109 @@ def ag_koprusu() -> None:
         _sh.rmtree(kok, ignore_errors=True)
 
 
+def test_sohbet_ara():
+    print("\n=== Sohbet Icerik Arama Testi ===")
+    temiz_kopru(None)
+    kopru = Kopru()
+    s1 = kopru._aktif
+    s1["baslik"] = "Alisveris Listesi"
+    s1["arsiv"] = [
+        {"tip": "gorev_basladi", "veri": {"gorev": "Bana marketten elma ve sut al"}},
+        {"tip": "yanit_parcasi", "veri": {"metin": "Tamam elma ve sut not edildi."}}
+    ]
+    s2 = kopru._sohbet_yarat()
+    s2["baslik"] = "Yazilim Mimarisi"
+    s2["arsiv"] = [
+        {"tip": "gorev_basladi", "veri": {"gorev": "Python sqlite3 ornegi hazirla"}},
+        {"tip": "yanit_parcasi", "veri": {"metin": "Veritabani baglantisi acildi."}}
+    ]
+
+    r = kopru.sohbet_ara("elma")
+    dogrula(len(r) == 1 and r[0]["id"] == s1["id"], "icerikte gecen terim bulundu")
+    dogrula("elma" in r[0]["eslesme"].lower(), "eslesme metin kirpigini tasiyor")
+
+    r_baslik = kopru.sohbet_ara("Yazilim")
+    dogrula(len(r_baslik) == 1 and r_baslik[0]["id"] == s2["id"], "baslikta gecen terim bulundu")
+
+    r_bos = kopru.sohbet_ara("olmayan_kelime_xyz")
+    dogrula(len(r_bos) == 0, "olmayan kelimede bos sonuc dondu")
+
+
+def test_son_turu_geri_al():
+    print("\n=== Son Turu Geri Al Testi ===")
+    def sahte_konusma(gorev: str, mod: str | None, oturum: Oturum,
+                      profil: str | None = None) -> str:
+        oturum.gorev_basladi()
+        gecmis = oturum.gecmis_al()
+        gecmis.append(kullanici_mesaji(gorev))
+        gecmis.append(model_turu("Yanit: " + gorev, []))
+        oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": "Yanit: " + gorev}))
+        return "bitti"
+
+    kopru = temiz_kopru(sahte_konusma)
+    dogrula(kopru.son_turu_geri_al() is None, "bos sohbette son_turu_geri_al None")
+
+    kopru.gorev_baslat("gorev 1")
+    dogrula(olay_bekle(kopru, OlayTipi.GOREV_BITTI) is not None, "gorev 1 bitti")
+    dogrula(len(kopru.oturum.gecmis_al()) == 2, "gecmis 2 oge (user + model)")
+    dogrula(len(kopru._aktif["arsiv"]) > 0, "arsivde olaylar var")
+
+    kopru.gorev_baslat("gorev 2")
+    dogrula(olay_bekle(kopru, OlayTipi.GOREV_BITTI) is not None, "gorev 2 bitti")
+    dogrula(len(kopru.oturum.gecmis_al()) == 4, "gecmis 4 oge")
+
+    r = kopru.son_turu_geri_al()
+    dogrula(r is not None and r["ok"] is True, "son_turu_geri_al basarili")
+    dogrula(r["gorev"] == "gorev 2", "geri alinan gorev metni dogru")
+    dogrula(len(kopru.oturum.gecmis_al()) == 2, "gecmis gorev 1'e dustu")
+    dogrula(kopru.oturum.gecmis_al()[0]["parcalar"][0]["metin"] == "gorev 1", "kalan gecmis gorev 1")
+
+    r2 = kopru.son_turu_geri_al()
+    dogrula(r2 is not None and r2["ok"] is True, "ikinci son_turu_geri_al basarili")
+    dogrula(r2["gorev"] == "gorev 1", "geri alinan gorev 1")
+    dogrula(len(kopru.oturum.gecmis_al()) == 0, "gecmis tamamen bosaldi")
+    dogrula(len(kopru._aktif["arsiv"]) == 0, "arsiv tamamen bosaldi")
+    dogrula(kopru.son_turu_geri_al() is None, "tekrar bosken None dondu")
+
+
+def test_akisli_gorev_ve_kesme() -> None:
+    print("\n=== Akisli Yanit ve Kesme Testi ===")
+
+    def sahte_akis_gorevi(gorev: str, mod: str | None, oturum: Oturum, profil: str | None = None) -> str:
+        parcalar = ["Parca 1 ", "Parca 2 ", "Parca 3 "]
+        for p in parcalar:
+            oturum.kontrol()
+            oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": p, "akis": True}))
+            time.sleep(0.02)
+        oturum.kontrol()
+        oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": "".join(parcalar), "bitti": True}))
+        return "".join(parcalar)
+
+    kopru = temiz_kopru(sahte_akis_gorevi)
+    kopru.gorev_baslat("akis gorevi")
+    p1 = olay_bekle(kopru, OlayTipi.YANIT_PARCASI)
+    dogrula(p1 is not None and p1["veri"]["metin"] == "Parca 1 " and p1["veri"]["akis"] is True, "ilk akis parcasi geldi")
+    p2 = olay_bekle(kopru, OlayTipi.YANIT_PARCASI)
+    dogrula(p2 is not None and p2["veri"]["metin"] == "Parca 2 ", "ikinci akis parcasi geldi")
+    bitti = olay_bekle(kopru, OlayTipi.GOREV_BITTI)
+    dogrula(bitti is not None and bitti["veri"]["metin"] == "Parca 1 Parca 2 Parca 3 ", "akisli gorev basariyla bitti")
+
+    def uzun_akis_gorevi(gorev: str, mod: str | None, oturum: Oturum, profil: str | None = None) -> str:
+        for i in range(50):
+            oturum.kontrol()
+            oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": f"Token_{i} ", "akis": True}))
+            time.sleep(0.02)
+        return "bitti"
+
+    kopru2 = temiz_kopru(uzun_akis_gorevi)
+    kopru2.gorev_baslat("uzun akis")
+    ilk = olay_bekle(kopru2, OlayTipi.YANIT_PARCASI)
+    dogrula(ilk is not None, "uzun akis basladi")
+    kopru2.durdur()
+    bitti2 = olay_bekle(kopru2, OlayTipi.GOREV_BITTI)
+    dogrula(bitti2 is not None and bitti2["veri"]["durduruldu"] is True, "akis sirasinda durdurma calisti")
+
+
 if __name__ == "__main__":
     test_toplu_onay_ve_destructive()
     test_durdurma()
@@ -575,6 +678,9 @@ if __name__ == "__main__":
     test_kalicilik()
     test_sohbet_sirasi()
     test_arac_daraltmasi()
+    test_sohbet_ara()
+    test_son_turu_geri_al()
+    test_akisli_gorev_ve_kesme()
     ag_koprusu()
     shutil.rmtree(_depo.KOK, ignore_errors=True)
     print(f"\nSonuc: {'TUM TESTLER GECTI' if HATA_SAYISI == 0 else f'{HATA_SAYISI} test kaldi'}")

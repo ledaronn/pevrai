@@ -122,7 +122,8 @@ class KimlikGecisi(unittest.TestCase):
     def test_arayuz_eski_tercihleri_korur(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(channel="chrome", headless=True)
+            from tarayici_test_ortami import baslat as test_tarayicisi
+            browser = test_tarayicisi(pw, headless=True)
             try:
                 page = browser.new_page()
                 errors = []

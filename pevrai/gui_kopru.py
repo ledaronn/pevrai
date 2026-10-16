@@ -146,6 +146,8 @@ class Kopru:
             # KULLANILMIYOR: kapanista butun sohbetler arka arkaya yaziliyor,
             # hepsi ayni anda "guncellenmis" gorunurdu.
             "guncelleme": _simdi(),
+            "_yuklendi": True,
+            "_olay_sayisi": 0,
         }
         sohbet["oturum"] = Oturum(
             onay_saglayici=self._onay_bekle,
@@ -156,10 +158,11 @@ class Kopru:
         return sohbet
 
     def _diskten_yukle(self) -> None:
-        """Kayitli sohbetleri geri getirir. Hicbir hata acilisi engellemez."""
+        """Kayitli sohbetlerin hafif indeksini yukler (lazy load).
+        Tam icerik ve oturum baglami sohbet secildiginde okunur."""
         try:
             from pevrai import sohbet as depo
-            kayitlar = depo.yukle_hepsi()
+            kayitlar = depo.yukle_indeks()
         except Exception as e:
             self._yuklenen_uyarilar.append(
                 f"Kayitli sohbetler okunamadi ({type(e).__name__}: {e}).")
@@ -169,19 +172,41 @@ class Kopru:
             s = self._sohbet_yarat(kimlik=kayit["id"])
             s["baslik"] = kayit.get("baslik", "")
             s["guncelleme"] = kayit.get("guncelleme") or s["guncelleme"]
+            s["_olay_sayisi"] = kayit.get("olay", 0)
+            s["_yuklendi"] = False
             proje = kayit.get("proje_baglami")
             if isinstance(proje, dict) and isinstance(proje.get("id"), str) and isinstance(proje.get("name"), str):
                 s["oturum"].proje_baglami = {"id": proje["id"], "name": proje["name"]}
-            s["arsiv"] = list(kayit.get("arsiv", []))     # sozluk halinde saklanir
+            s["arsiv"] = []
+
+    def _sohbeti_tam_yukle(self, s: dict[str, Any]) -> None:
+        """Hafif indeksten acilmis bir sohbetin tam arsiv ve gecmisini diskten okur."""
+        if s.get("_yuklendi", True):
+            return
+        s["_yuklendi"] = True
+        try:
+            from pevrai import sohbet as depo
+            kayit = depo.yukle_tek(s["id"])
+            if not kayit:
+                return
+            s["baslik"] = kayit.get("baslik") or s["baslik"]
+            s["guncelleme"] = kayit.get("guncelleme") or s["guncelleme"]
+            s["arsiv"] = list(kayit.get("arsiv", []))
+            s["_olay_sayisi"] = len(s["arsiv"])
+            proje = kayit.get("proje_baglami")
+            if isinstance(proje, dict) and isinstance(proje.get("id"), str) and isinstance(proje.get("name"), str):
+                s["oturum"].proje_baglami = {"id": proje["id"], "name": proje["name"]}
             try:
                 s["oturum"].gecmis_al().extend(_gecmisi_contente(kayit.get("gecmis", [])))
-                s["oturum"].gorev_basladi()               # yeni gorev icin sinir isareti
+                s["oturum"].gorev_basladi()
             except Exception as e:
                 kayit["uyari"] = (f"'{s['baslik']}' sohbetinin baglami yuklenemedi "
                                   f"({type(e).__name__}). Metin acildi, ama buradan devam "
                                   f"edersen ajan onceki konusmayi hatirlamaz.")
             if kayit.get("uyari"):
                 self._yuklenen_uyarilar.append(f"{s['baslik'] or s['id']}: {kayit['uyari']}")
+        except Exception as e:
+            self._yuklenen_uyarilar.append(f"Sohbet okunamadi ({s['id']}): {e}")
 
     def uyarilari_al(self) -> list[str]:
         """Acilista biriken yukleme uyarilari; arayuz bir kez gosterir."""
@@ -239,7 +264,7 @@ class Kopru:
         gosterir (bkz. sohbet_sirasi). Basliksiz sohbet "Yeni sohbet" adiyla
         gider ve aktifse yine bastadir — kural basliga degil aktiflige bakar."""
         return [{"id": s["id"], "baslik": s["baslik"] or "Yeni sohbet",
-                 "aktif": s is self._aktif, "olay": len(s["arsiv"]),
+                 "aktif": s is self._aktif, "olay": len(s["arsiv"]) if s.get("_yuklendi", True) else s.get("_olay_sayisi", 0),
                  "guncelleme": s["guncelleme"]}
                 for s in sohbet_sirasi(self._sohbetler, self._aktif)]
 
@@ -268,11 +293,54 @@ class Kopru:
             return None
         for s in self._sohbetler:
             if s["id"] == sohbet_id:
+                if not s.get("_yuklendi", True):
+                    self._sohbeti_tam_yukle(s)
                 self._aktif = s
                 self._bosalt(self._olaylar)
                 self._bosalt(self._cevap)
                 return list(s["arsiv"])
         return None
+
+    def sohbet_ara(self, terim: str, limit: int = 15) -> list[dict[str, Any]]:
+        terim = (terim or "").strip().lower()
+        if not terim:
+            return []
+        sonuclar = []
+        for s in self._sohbetler:
+            baslik = (s["baslik"] or "").lower()
+            eslesme = None
+            if terim in baslik:
+                eslesme = s["baslik"] or "Yeni sohbet"
+            else:
+                if not s.get("_yuklendi", True):
+                    self._sohbeti_tam_yukle(s)
+                for o in reversed(s.get("arsiv", [])):
+                    veri = o.get("veri") or {}
+                    metin = ""
+                    if o.get("tip") == "gorev_basladi":
+                        metin = str(veri.get("gorev", ""))
+                    elif o.get("tip") == "yanit_parcasi":
+                        metin = str(veri.get("metin", ""))
+                    elif o.get("tip") == "ozet":
+                        metin = str(veri.get("metin", ""))
+                    if terim in metin.lower():
+                        idx = metin.lower().find(terim)
+                        bas = max(0, idx - 30)
+                        bit = min(len(metin), idx + len(terim) + 50)
+                        kirpik = ("..." if bas > 0 else "") + metin[bas:bit].replace("\n", " ") + ("..." if bit < len(metin) else "")
+                        eslesme = kirpik
+                        break
+            if eslesme:
+                sonuclar.append({
+                    "id": s["id"],
+                    "baslik": s["baslik"] or "Yeni sohbet",
+                    "eslesme": eslesme,
+                    "aktif": s is self._aktif,
+                    "guncelleme": s["guncelleme"]
+                })
+                if len(sonuclar) >= limit:
+                    break
+        return sonuclar
 
     def sohbet_sil(self, sohbet_id: str) -> bool:
         if self.calisiyor():
@@ -290,6 +358,77 @@ class Kopru:
                     self._bosalt(self._olaylar)
                 return True
         return False
+
+    def son_turu_geri_al(self) -> dict[str, Any] | None:
+        """Son gorev turunu arsivden ve oturum gecmisinden cikarir.
+
+        Kullanici "yaniti yeniden uret" veya "son mesaji duzenle" dediginde
+        cagrilir. Calisan gorev varsa None doner. Zincir butunlugu dogrulanir.
+        """
+        if self.calisiyor():
+            return None
+        s = self._aktif
+        arsiv = s.get("arsiv", [])
+        if not arsiv:
+            return None
+
+        son_bas = -1
+        for i in range(len(arsiv) - 1, -1, -1):
+            if arsiv[i].get("tip") == "gorev_basladi":
+                son_bas = i
+                break
+        if son_bas == -1:
+            return None
+
+        ham_olay = arsiv[son_bas]
+        veri = ham_olay.get("veri") or {}
+        gorev = str(veri.get("gorev", ""))
+        mod = veri.get("mod")
+        profil = veri.get("profil")
+        ekip = bool(veri.get("ekip", False))
+
+        del arsiv[son_bas:]
+        s["guncelleme"] = _simdi()
+        if not arsiv:
+            s["baslik"] = ""
+
+        oturum = s["oturum"]
+        gecmis = oturum.gecmis_al()
+        kes = None
+        while oturum._gorev_indisleri:
+            indis = oturum._gorev_indisleri.pop()
+            if indis < len(gecmis):
+                kes = indis
+                break
+        if kes is not None:
+            del gecmis[kes:]
+        else:
+            for i in range(len(gecmis) - 1, -1, -1):
+                item = gecmis[i]
+                rol = item.get("rol") if isinstance(item, dict) else getattr(item, "role", None)
+                if rol == "user":
+                    del gecmis[i:]
+                    break
+
+        from pevrai import sohbet as depo
+        sozlukler = [item if isinstance(item, dict) else depo._content_sozluge(item) for item in gecmis]
+        temiz_sozlukler, _ = depo.zinciri_dogrula(sozlukler)
+        gecmis.clear()
+        gecmis.extend(temiz_sozlukler)
+        if not gecmis:
+            oturum._gorev_indisleri.clear()
+
+        self._kaydet(s)
+        self._bosalt(self._olaylar)
+        self._bosalt(self._cevap)
+        return {
+            "ok": True,
+            "gorev": gorev,
+            "mod": mod,
+            "profil": profil,
+            "ekip": ekip,
+            "olaylar": list(arsiv)
+        }
 
     def araclari_daralt(self, kapali: list[str], hepsi_kapali: bool) -> bool:
         """Araclar paneli / sohbet anahtari: AKTIF sohbetin daraltmasini yazar.

@@ -64,7 +64,8 @@ def _dogrula(ortam: dict[str, str]) -> None:
                              encoding="utf-8", errors="replace", env=ortam, timeout=30)
     if version.returncode != 0 or version.stdout.strip() != surum():
         raise SystemExit("Paketlenmis EXE surumu kaynak/kurulum surumuyle eslesmiyor.")
-    r = subprocess.run([str(DIST / "pevrai-cli.exe"), "--tani"], capture_output=True, text=True,
+    # This probe runs only with disposable HOME/data roots; inspect the exact path.
+    r = subprocess.run([str(DIST / "pevrai-cli.exe"), "--tani-ayrintili"], capture_output=True, text=True,
                        encoding="utf-8", errors="replace", env=ortam, timeout=120)
     print("\n".join("    " + s for s in r.stdout.splitlines()))
     if r.returncode != 0 or "dondurulmus .exe" not in r.stdout:

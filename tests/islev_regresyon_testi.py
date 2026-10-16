@@ -66,7 +66,7 @@ class Regression(unittest.TestCase):
         def generate(*a):
             calls.append(1);o.durdur();raise OranSiniri(429,'rate limit')
         fake=SimpleNamespace(politika=SimpleNamespace(gunluk_tavan={}),semalar=[])
-        with patch.object(v,'B',fake),patch.object(v,'tavan_karari',return_value=None),patch.object(v.journal,'kota_artir'),patch.object(v.journal,'kota_sayaclari',return_value={}),patch.object(v,'sistem_talimati',return_value=''):
+        with patch.object(v,'B',fake),patch.object(v.journal,'kota_ayir',return_value=None),patch.object(v,'sistem_talimati',return_value=''):
             with self.assertRaises(Durduruldu):v._model_cagir(SimpleNamespace(uret=generate),[],'fake','varsayilan',oturum=o)
         self.assertEqual(len(calls),1)
 

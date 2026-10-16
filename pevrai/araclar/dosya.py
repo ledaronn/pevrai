@@ -112,7 +112,8 @@ def read_file(yol: Path, args: dict) -> str:
       sema={"type": "object", "properties": {
                 "path": {"type": "string", "description": "Aramanin baslayacagi klasorun tam yolu."},
                 "query": {"type": "string", "description": "Aranacak kelime veya ifade."},
-                "glob": {"type": "string", "description": "Dosya deseni, orn '*.pdf'. Varsayilan '*'."}},
+                "glob": {"type": "string", "description": "Dosya deseni, orn '*.pdf'. Varsayilan '*'."},
+                "semantic": {"type": "boolean", "description": "Yerel Ollama embedding ile anlamsal arama yap (varsayilan false)."}},
             "required": ["path", "query"]})
 def search(yol: Path, args: dict) -> str:
     sorgu = args.get("query")
@@ -122,6 +123,12 @@ def search(yol: Path, args: dict) -> str:
         return sonuc_hatasi(t("'{yol}' geçerli bir klasör değil. Arama kökü bir klasör olmalı.", yol=yol))
     # Kara liste ARAMAYA da uygulanir: kapi yalnizca koku denetliyor,
     # kokun altindaki dosyalari bu arac kendisi okuyor (bkz. ara.ara).
+    if args.get("semantic"):
+        try:
+            sonuc = ara.anlamsal_ara(yol, sorgu, args.get("glob", "*"), yasakli=B.politika._yasakli_mi)
+        except ValueError as e:
+            return sonuc_hatasi(str(e))
+        return kirp(sonuc, sonuc.count("\n"))
     sonuc = ara.ara(yol, sorgu, args.get("glob", "*"), yasakli=B.politika._yasakli_mi)
     return kirp(sonuc, sonuc.count("\n"))
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from tarayici_test_ortami import baslat as test_tarayicisi
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # proje koku -> 'pevrai' paketi
 from pevrai import PAKET, PROJE_KOKU
@@ -103,10 +104,7 @@ def tarayici_karti_testi() -> None:
     kare = _kare_uret()
 
     with sync_playwright() as p:
-        try:
-            tarayici = p.chromium.launch(channel="chrome", headless=True)
-        except Exception:
-            tarayici = p.chromium.launch(headless=True)
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1000, "height": 780})
         sayfa.goto(HTML.resolve().as_uri())
         sayfa.evaluate(SAHTE_API)
@@ -386,10 +384,7 @@ def araclar_paneli_testi() -> None:
         dogrula(False, f"playwright ice aktarilamadi: {e}")
         return
     with sync_playwright() as p:
-        try:
-            tarayici = p.chromium.launch(channel="chrome", headless=True)
-        except Exception:
-            tarayici = p.chromium.launch(headless=True)
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1000, "height": 780})
         sayfa.goto(HTML.resolve().as_uri())
         sayfa.evaluate(SAHTE_ARAC_API)
@@ -480,10 +475,7 @@ def yol_tiklama_testi() -> None:
         dogrula(False, f"playwright ice aktarilamadi: {e}")
         return
     with sync_playwright() as p:
-        try:
-            tarayici = p.chromium.launch(channel="chrome", headless=True)
-        except Exception:
-            tarayici = p.chromium.launch(headless=True)
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1000, "height": 780})
         sayfa.goto(HTML.resolve().as_uri())
         sayfa.evaluate(
@@ -535,10 +527,7 @@ def secim_testi() -> None:
         dogrula(False, f"playwright ice aktarilamadi: {e}")
         return
     with sync_playwright() as p:
-        try:
-            tarayici = p.chromium.launch(channel="chrome", headless=True)
-        except Exception:
-            tarayici = p.chromium.launch(headless=True)
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1000, "height": 780})
         sayfa.goto(HTML.resolve().as_uri())
         sayfa.evaluate("() => { kullaniciMesaji('istem metni'); yanitMesaji('yanit metni\\n\\n```py\\nx = 1\\n```'); }")
@@ -567,6 +556,10 @@ def main() -> int:
         return 1
     metin = HTML.read_text(encoding="utf-8")
     kod = kod_govdesi(metin)
+    app_js_yol = PAKET / "arayuz" / "app.js"
+    app_js = app_js_yol.read_text(encoding="utf-8") if app_js_yol.exists() else ""
+    tum_metin = metin + "\n" + app_js
+    tum_kod = kod + "\n" + kod_govdesi(app_js)
 
     print("\n1) HTML enjeksiyon yolu kapali mi (ARAYUZ.md 9/4)")
     for kalip in YASAK_KALIPLAR:
@@ -595,12 +588,12 @@ def main() -> int:
             f"index.html yalnizca yerel betikleri yukluyor ({len(kaynaklar)})")
 
     print("\n3) Onay karti sozlesmesi")
-    dogrula("toplu_sunulabilir" in kod,
+    dogrula("toplu_sunulabilir" in tum_kod,
             "'Tumu' dugmesi toplu_sunulabilir bayragina bagli")
     # Bayrak kontrolu ile dugme ayni satirda olmali; ayrisirlarsa kural sessizce kirilir.
-    dogrula(re.search(r"if\s*\(\s*istek\.toplu_sunulabilir\s*\)\s*dugme\(", kod) is not None,
+    dogrula(re.search(r"if\s*\(\s*istek\.toplu_sunulabilir\s*\)\s*dugme\(", tum_kod) is not None,
             "dugme yalnizca bayrak dogruyken uretiliyor")
-    dogrula("untrusted_content" in kod,
+    dogrula("untrusted_content" in tum_kod,
             "dis kaynak ciktisi gorsel olarak isaretleniyor")
 
     print("\n3b) Ayarlar bolum ikonlari")
@@ -608,11 +601,11 @@ def main() -> int:
     # bos bir SVG uretir (ikon(ad) bilinmeyen adda hata vermiyor). Sohbet
     # sekmesi boyle ikonsuz kalmisti. Ikonlar satir ici; tablo disina cikan
     # bir ad = ya yazim hatasi ya da uzak kaynak denemesi.
-    ikon_bas = kod.find("const IKON")
-    ikon_blok = kod[ikon_bas:kod.find("\n};", ikon_bas)]
+    ikon_bas = tum_kod.find("const IKON")
+    ikon_blok = tum_kod[ikon_bas:tum_kod.find("\n};", ikon_bas)]
     ikon_adlari = set(re.findall(r"\b([a-z0-9]+):\[", ikon_blok))
     sekmeler = re.findall(r'\["([a-z]+)",\s*"([a-z0-9]+)",\s*"[^"]+"\]',
-                          kod[kod.find("const AYAR_SEKMELERI"):kod.find("function ayarlariAc")])
+                          tum_kod[tum_kod.find("const AYAR_SEKMELERI"):tum_kod.find("function ayarlariAc")])
     dogrula(len(sekmeler) == 7, f"Ayarlar sekme listesi okundu ({len(sekmeler)} sekme; sadelestirme: 10 -> 7)")
     for kod_adi, ikon_adi in sekmeler:
         dogrula(ikon_adi in ikon_adlari, f"'{kod_adi}' sekmesinin ikonu IKON tablosunda ({ikon_adi})")
@@ -650,8 +643,8 @@ def main() -> int:
     # Iki yerde iki tarayici gorunumu tutmak ikisinin zamanla ayrismasi demek.
     # Panel silindi; olu kodu ve CSS'i de silinmis olmali.
     for iz in ('id="calisma"', "#calisma", "calismaGoster", "calismaGizle", "calismaKilitli"):
-        dogrula(iz not in metin, f"'{iz}' izi kalmamis")
-    dogrula("Pevrai bu sayfayı kullanıyor" in metin and "modele gönderilmez" in metin,
+        dogrula(iz not in tum_metin, f"'{iz}' izi kalmamis")
+    dogrula("Pevrai bu sayfayı kullanıyor" in tum_metin and "modele gönderilmez" in tum_metin,
             "bilgi satiri korunmus")
 
     tarayici_karti_testi()

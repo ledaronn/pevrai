@@ -7,7 +7,7 @@ burada; dongu ve gecmis gercek adi tasir.
 from __future__ import annotations
 
 import base64
-from typing import Any
+from typing import Any, Iterator
 
 from pevrai.model.taban import (AracCagrisi, ModelHatasi, OranSiniri, Saglayici, arac_adi_coz, arac_adi_kodla,
                                 SunucuHatasi, Yanit, ZamanAsimi, model_turu,
@@ -139,6 +139,66 @@ class Gemini(Saglayici):
         return Yanit(metin=metin, cagrilar=cagrilar, icerik=model_turu(metin, cagrilar, metin_ek),
                      girdi_token=int(getattr(k, "prompt_token_count", 0) or 0),
                      cikti_token=int(getattr(k, "candidates_token_count", 0) or 0))
+
+    def uret_akis(self, model: str, gecmis: list[dict], sistem: str,
+                  araclar: list[dict] | None, zorla_arac: str | None = None) -> Iterator[str | Yanit]:
+        import httpx
+        from google.genai import errors
+        t = self._types
+        tool_config = None
+        if zorla_arac:
+            tool_config = t.ToolConfig(function_calling_config=t.FunctionCallingConfig(
+                mode=t.FunctionCallingConfigMode.ANY, allowed_function_names=[_kodla(zorla_arac)]))
+
+        cagrilar: list[AracCagrisi] = []
+        metinler: list[str] = []
+        metin_ek: dict = {}
+        son_usage = None
+
+        try:
+            cevap_akis = self._client.models.generate_content_stream(
+                model=model, contents=self._icerikler(gecmis, model),
+                config=t.GenerateContentConfig(
+                    system_instruction=sistem,
+                    tools=(None if araclar is None else [self._arac(araclar)]),
+                    tool_config=tool_config,
+                    automatic_function_calling=t.AutomaticFunctionCallingConfig(disable=True)))
+
+            for parca_yanit in cevap_akis:
+                if getattr(parca_yanit, "usage_metadata", None):
+                    son_usage = parca_yanit.usage_metadata
+                aday = (parca_yanit.candidates or [None])[0]
+                for parca in ((aday.content.parts if aday and aday.content else None) or []):
+                    imza = getattr(parca, "thought_signature", None)
+                    ek = {"gemini_imza": base64.b64encode(imza).decode("ascii")} if imza else {}
+                    if getattr(parca, "function_call", None) is not None:
+                        fc = parca.function_call
+                        cagrilar.append(AracCagrisi(ad=_coz(fc.name), args=dict(fc.args or {}),
+                                                    id=getattr(fc, "id", None) or yeni_cagri_kimligi(), ek=ek))
+                    elif getattr(parca, "text", None) and not getattr(parca, "thought", False):
+                        metinler.append(parca.text)
+                        if ek:
+                            metin_ek = ek
+                        yield parca.text
+
+        except errors.ClientError as e:
+            if e.code == 429:
+                raise OranSiniri(429, str(e.message)) from e
+            raise ModelHatasi(int(e.code or 0), str(e.message)) from e
+        except errors.ServerError as e:
+            raise SunucuHatasi(int(e.code or 500), str(e.message)) from e
+        except httpx.TimeoutException as e:
+            raise ZamanAsimi(str(e)) from e
+
+        metin = "".join(metinler) or None
+        girdi_token = int(getattr(son_usage, "prompt_token_count", 0) or 0)
+        cikti_token = int(getattr(son_usage, "candidates_token_count", 0) or 0)
+        if not girdi_token and not cikti_token and metin:
+            cikti_token = max(1, len(metin) // 4)
+
+        yanit = Yanit(metin=metin, cagrilar=cagrilar, icerik=model_turu(metin, cagrilar, metin_ek),
+                      girdi_token=girdi_token, cikti_token=cikti_token)
+        yield yanit
 
     def modeller(self) -> list[str]:
         return sorted(m.name.removeprefix("models/") for m in self._client.models.list()

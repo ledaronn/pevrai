@@ -306,6 +306,48 @@ class PluginsTest(unittest.TestCase):
         with Store(self.root / "db" / "study.sqlite3").transaction() as db:
             self.assertEqual({r[0] for r in db.execute("SELECT DISTINCT actor FROM audit")}, {"ai", "user"})
 
+    def test_local_semantic_search_notes_and_workspace(self):
+        from pevrai import anlamsal, ara, journal
+        with self.assertRaises(ValueError):
+            anlamsal.yerel_adres_dogrula("https://api.openai.com/v1")
+        with self.assertRaises(ValueError):
+            anlamsal.yerel_adres_dogrula("http://10.0.0.5:11434")
+        self.assertEqual(anlamsal.yerel_adres_dogrula("http://localhost:11434/"), "http://localhost:11434")
+
+        n1 = self.call("note_create", title="Termodinamik", body="Isı ve enerji dönüşümü yasaları", tags=["fizik"])
+        n2 = self.call("note_create", title="Hukuk Başlangıcı", body="Anayasa ve medeni hukuk kuralları", tags=["hukuk"])
+
+        def sahte_gomme(metinler, model="", taban_url="", zaman_asimi=8.0):
+            cikti = []
+            for m in metinler:
+                ml = m.lower()
+                if any(k in ml for k in ("enerji", "termodinamik", "entropi", "ısı")):
+                    cikti.append([0.98, 0.02])
+                elif any(k in ml for k in ("hukuk", "anayasa", "kanun", "yargı")):
+                    cikti.append([0.02, 0.98])
+                else:
+                    cikti.append([0.5, 0.5])
+            return cikti
+
+        with patch.object(journal, "KOK", self.root / "vekil"), patch.object(anlamsal, "gomme_uret", side_effect=sahte_gomme):
+            sonuc = self.call("note_search", query="entropi ve enerji", semantic=True)
+            self.assertTrue(sonuc.get("semantic"))
+            self.assertGreaterEqual(sonuc["total"], 1)
+            self.assertEqual(sonuc["items"][0]["id"], n1["id"])
+
+            ws_dir = self.root / "calisma"
+            ws_dir.mkdir(exist_ok=True)
+            (ws_dir / "fizik_notu.md").write_text("Termodinamik birinci yasası enerji korunumunu açıklar.", encoding="utf-8")
+            (ws_dir / "hukuk_notu.md").write_text("Anayasa mahkemesi ve kanunların normlar hiyerarşisi.", encoding="utf-8")
+            (ws_dir / "gizli_sifre.txt").write_text("enerji entropi gizli parola", encoding="utf-8")
+
+            rapor = ara.anlamsal_ara(ws_dir, "yargı ve kanunlar", yasakli=lambda p: "gizli" in p.name)
+            self.assertIn("ANLAMSAL ESLESENLER:", rapor)
+            self.assertIn("hukuk_notu.md", rapor)
+            self.assertNotIn("gizli_sifre.txt", rapor)
+            self.assertIn("1 dosya kara liste nedeniyle taranmadi", rapor)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

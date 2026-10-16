@@ -99,244 +99,30 @@ MOD_SAYI_ALANLARI: dict[str, tuple[int, int]] = {
     "adim": (1, 50), "cagri": (1, 200), "istek": (1, 200)}
 
 # ---------------------------------------------------------------------------
-# config/arayuz.toml — bizim dosyamiz, dogrudan yazilir
+# Modül sorumlulukları (ayarlar_arayuz ve ayarlar_toml)
 # ---------------------------------------------------------------------------
 
-ARAYUZ_VARSAYILAN: dict[str, dict[str, Any]] = {
-    # dil: arayuz VE Python tarafinin (onay karti, hatalar, ozet, sistem
-    # talimati, arac bildirimleri/ciktilari — pevrai/ceviri.py) dili.
-    # VARSAYILAN INGILIZCE (acik kaynak dagitim). Kaynak dil kodda Turkce.
-    # gelismis_ayarlar: Ayarlar'da ikinci katman (tavanlar, efor modlari, kara
-    # liste, izin tablosu...) gorunsun mu. Varsayilan KAPALI: ilk kurulumda
-    # gereken 2-3 ayar disinda hicbir sey gosterilmez.
-    # kurulum_tamam: ilk kurulum ekrani (dil, klasorler, eklentiler) bitti mi.
-    # Dosya yoksa False -> arayuz ilk acilista kurulum ekranini gosterir.
-    "genel": {"dil": "en", "gelismis_ayarlar": False, "kurulum_tamam": False, "guncellemeleri_denetle": True},
-    "gorunum": {"tema": "koyu", "animasyon": "tam", "mesaj_genisligi": "dengeli", "ekip_gorunumu": "ofis"},
-    "sohbet": {"gecmis_koru": True, "otomatik_kaydirma": True},
-    "gelismis": {"teknik_ayrinti_acik": False, "test_modu": False},
-}
-ARAYUZ_SECENEK: dict[tuple[str, str], tuple[Any, ...]] = {
-    ("genel", "dil"): ("tr", "en"),
-    ("genel", "gelismis_ayarlar"): (True, False),
-    ("genel", "kurulum_tamam"): (True, False),
-    ("genel", "guncellemeleri_denetle"): (True, False),
-    ("gorunum", "tema"): ("koyu", "acik"),
-    ("gorunum", "animasyon"): ("tam", "azaltilmis", "kapali"),
-    ("gorunum", "mesaj_genisligi"): ("dar", "dengeli", "genis"),
-    ("gorunum", "ekip_gorunumu"): ("ofis", "kart"),
-    ("sohbet", "gecmis_koru"): (True, False),
-    ("sohbet", "otomatik_kaydirma"): (True, False),
-    ("gelismis", "teknik_ayrinti_acik"): (True, False),
-    ("gelismis", "test_modu"): (True, False),
-}
-
-
-def arayuz_oku() -> dict[str, dict[str, Any]]:
-    """Arayuz ayarlarini doner. Dosya yoksa ya da BOZUKSA varsayilanlar.
-
-    Bozuk bir ayar dosyasi yuzunden uygulama acilmamali; sessizce varsayilana
-    dusmek burada dogru davranis.
-    """
-    sonuc = {b: dict(a) for b, a in ARAYUZ_VARSAYILAN.items()}
-    try:
-        if not ARAYUZ_YOL.exists():
-            return sonuc
-        ham = tomllib.loads(ARAYUZ_YOL.read_text(encoding="utf-8"))
-    except Exception:
-        return sonuc
-    for bolum, alanlar in sonuc.items():
-        gelen = ham.get(bolum)
-        if not isinstance(gelen, dict):
-            continue
-        for anahtar in list(alanlar):
-            deger = gelen.get(anahtar)
-            if deger is not None and deger in ARAYUZ_SECENEK.get((bolum, anahtar), ()):
-                alanlar[anahtar] = deger
-    return sonuc
-
-
-def arayuz_yaz(bolum: str, anahtar: str, deger: Any) -> str | None:
-    """Tek bir arayuz ayarini yazar. Hata varsa metin doner, yoksa None."""
-    if (bolum, anahtar) not in ARAYUZ_SECENEK:
-        return f"Taninmayan ayar: {bolum}.{anahtar}"
-    if deger not in ARAYUZ_SECENEK[(bolum, anahtar)]:
-        izinli = ", ".join(str(x) for x in ARAYUZ_SECENEK[(bolum, anahtar)])
-        return f"'{deger}' gecersiz. Izinli: {izinli}"
-
-    mevcut = arayuz_oku()
-    mevcut[bolum][anahtar] = deger
-    satirlar = ["# arayuz.toml — Pevrai arayuz ayarlari.",
-                "# Bu dosya arayuzden yazilir; elle de duzenlenebilir.",
-                "# Bozulursa varsayilanlara dusulur, uygulama acilmaya devam eder.", ""]
-    for b, alanlar in mevcut.items():
-        satirlar.append(f"[{b}]")
-        for a, d in alanlar.items():
-            satirlar.append(f"{a} = {_toml_deger(d)}")
-        satirlar.append("")
-    try:
-        ARAYUZ_YOL.parent.mkdir(parents=True, exist_ok=True)
-        _atomik_yaz(ARAYUZ_YOL, "\n".join(satirlar))
-    except OSError as e:
-        return f"Yazilamadi: {e}"
-    return None
-
-
-def _toml_deger(d: Any) -> str:
-    if isinstance(d, bool):
-        return "true" if d else "false"
-    if isinstance(d, (int, float)):
-        return str(d)
-    return '"' + str(d).replace('"', '\\"') + '"'
-
-
-def _atomik_yaz(yol: Path, metin: str) -> None:
-    """Gecici dosyaya yaz, sonra yerine koy. Yarim yazilmis dosya birakmaz."""
-    gecici = yol.with_name(yol.name + ".yeni")
-    gecici.write_text(metin, encoding="utf-8")
-    gecici.replace(yol)
-
-
-# ---------------------------------------------------------------------------
-# policy.toml — satir bazli, korumali
-# ---------------------------------------------------------------------------
-
-def alan_gecerli(alan: str) -> bool:
-    """Alan adi bicimi. Yol enjeksiyonu ve bosluklu girdiler burada durur."""
-    return bool(_ALAN_KALIBI.match((alan or "").strip().lower()))
-
-
-def _bolum_araligi(satirlar: list[str], bolum: str) -> tuple[int, int] | None:
-    """[bolum] basliginin ve bloğun bittigi yerin indisleri. Yoksa None."""
-    hedef = "[" + bolum + "]"
-    for i, s in enumerate(satirlar):
-        if s.strip() == hedef:
-            j = i + 1
-            while j < len(satirlar) and not satirlar[j].lstrip().startswith("["):
-                j += 1
-            return i, j
-    return None
-
-
-def _anahtar_yaz(metin: str, bolum: str, anahtar: str, deger_metni: str) -> str:
-    """Bolumdeki anahtari degistirir; bolum ya da anahtar yoksa ekler.
-
-    Dosyanin geri kalanina DOKUNMAZ — yorumlar ve siralama korunur.
-    """
-    satirlar = metin.splitlines()
-    aralik = _bolum_araligi(satirlar, bolum)
-    yeni_satir = f"{anahtar} = {deger_metni}"
-
-    if aralik is None:
-        if satirlar and satirlar[-1].strip():
-            satirlar.append("")
-        satirlar += [f"[{bolum}]", yeni_satir, ""]
-        return "\n".join(satirlar) + "\n"
-
-    bas, son = aralik
-    kalip = re.compile(r"^\s*" + re.escape(anahtar) + r"\s*=")
-    for i in range(bas + 1, son):
-        if kalip.match(satirlar[i]):
-            satirlar[i] = yeni_satir
-            return "\n".join(satirlar) + "\n"
-
-    # Anahtar yok: bolumun sonundaki bos satirlardan once ekle
-    ekle = son
-    while ekle - 1 > bas and not satirlar[ekle - 1].strip():
-        ekle -= 1
-    satirlar.insert(ekle, yeni_satir)
-    return "\n".join(satirlar) + "\n"
-
-
-def _anahtar_sil(metin: str, bolum: str, anahtar: str) -> str:
-    """Anahtari siler; bolum bosaldiysa bolumu de siler."""
-    satirlar = metin.splitlines()
-    aralik = _bolum_araligi(satirlar, bolum)
-    if aralik is None:
-        return metin
-    bas, son = aralik
-    kalip = re.compile(r"^\s*" + re.escape(anahtar) + r"\s*=")
-    kalan = [s for s in satirlar[bas + 1:son] if not kalip.match(s)]
-    if any(s.strip() and not s.lstrip().startswith("#") for s in kalan):
-        satirlar[bas + 1:son] = kalan
-    else:
-        satirlar[bas:son] = []          # bolum bosaldi, basligi da goturur
-    return "\n".join(satirlar) + "\n"
-
-
-def _dizi_araligi(satirlar: list[str], bolum: str, anahtar: str) -> tuple[int, int] | None:
-    """TOML dizisinin (baslangic, kapanis) satir indeksleri. Tek satirlik
-    dizide ikisi ayni. Dizi kapanmamissa None — bozuk dosyaya dokunmayiz.
-
-    SINIR: '#' yorum baslangici sayiliyor. Deger icinde '#' gecen bir dizi
-    (yol ya da alan adinda pratikte olmuyor) yanlis ayristirilir.
-    """
-    aralik = _bolum_araligi(satirlar, bolum)
-    if aralik is None:
-        return None
-    bas, son = aralik
-    kalip = re.compile(r"^\s*" + re.escape(anahtar) + r"\s*=\s*\[")
-    for i in range(bas + 1, son):
-        if kalip.match(satirlar[i]):
-            derinlik = 0
-            for j in range(i, son):
-                govde = satirlar[j].split("#", 1)[0]
-                derinlik += govde.count("[") - govde.count("]")
-                if derinlik <= 0:
-                    return (i, j)
-            return None
-    return None
-
-
-def _dizi_oge_ekle(metin: str, bolum: str, anahtar: str, deger: str) -> str | None:
-    """Diziye tek satir ekler; dizinin geri kalanina ve YORUMLARA dokunmaz.
-
-    Diziyi bastan uretmiyoruz: policy.toml'da "kapi testi bunu bekliyor,
-    dokunma" gibi satirlar var ve bastan uretim onlari siler.
-    """
-    satirlar = metin.splitlines()
-    yer = _dizi_araligi(satirlar, bolum, anahtar)
-    if yer is None:
-        return None
-    bas, kapanis = yer
-    if bas == kapanis:                       # tek satirlik dizi
-        govde = satirlar[bas]
-        kapa = govde.rindex("]")
-        ic = govde[govde.index("[") + 1:kapa].strip()
-        ayirac = "" if not ic or ic.endswith(",") else ", "
-        satirlar[bas] = govde[:kapa] + ayirac + json.dumps(deger) + govde[kapa:]
-    else:
-        satirlar.insert(kapanis, f"    {json.dumps(deger)},")
-    return "\n".join(satirlar) + "\n"
-
-
-def _dizi_oge_sil(metin: str, bolum: str, anahtar: str, deger: str) -> str | None:
-    """Diziden bir ogeyi siler. Cok satirli dizide oge KENDI SATIRINDA olmali.
-
-    Ayni satirda iki oge varsa (policy.toml'da var: '"claude.ai", "anthropic.com",')
-    None doner. Tahmin yurutup guvenlik dosyasini bozmaktansa kullaniciya
-    "bu satiri elle duzenle" demek dogrusu.
-    """
-    satirlar = metin.splitlines()
-    yer = _dizi_araligi(satirlar, bolum, anahtar)
-    if yer is None:
-        return None
-    bas, kapanis = yer
-    hedef = json.dumps(deger)
-    if bas == kapanis:
-        govde = satirlar[bas]
-        ac, kapa = govde.index("["), govde.rindex("]")
-        ogeler = [p.strip() for p in govde[ac + 1:kapa].split(",") if p.strip()]
-        if hedef not in ogeler:
-            return None
-        ogeler.remove(hedef)
-        satirlar[bas] = govde[:ac + 1] + ", ".join(ogeler) + govde[kapa:]
-        return "\n".join(satirlar) + "\n"
-    for i in range(bas + 1, kapanis):
-        if satirlar[i].split("#", 1)[0].strip().rstrip(",").strip() == hedef:
-            del satirlar[i]
-            return "\n".join(satirlar) + "\n"
-    return None
+from pevrai.ayarlar_arayuz import (
+    ARAYUZ_YOL,
+    ARAYUZ_VARSAYILAN,
+    ARAYUZ_SECENEK,
+    arayuz_oku,
+    arayuz_yaz,
+)
+from pevrai.ayarlar_toml import (
+    alan_gecerli,
+    _toml_deger,
+    _toml_dizi,
+    _atomik_yaz,
+    _bolum_araligi,
+    _anahtar_yaz,
+    _anahtar_sil,
+    _bolum_sil,
+    _dizi_araligi,
+    _dizi_oge_ekle,
+    _dizi_oge_sil,
+    _yol_ogelerini_degistir,
+)
 
 
 def _guvenli_yaz(yeni_metin: str) -> str | None:

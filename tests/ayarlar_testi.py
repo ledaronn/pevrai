@@ -220,6 +220,9 @@ def main() -> int:
     dogrula(ayarlar.arayuz_oku()["genel"]["dil"] == "tr", "reddedilen dil mevcut degeri bozmadi")
     # index.html'deki CEVIRI sozlugu, ayarin kabul ettigi her dili (tr disinda) tasimali.
     arayuz_html = (PAKET / "arayuz" / "index.html").read_text(encoding="utf-8")
+    app_js_yol = PAKET / "arayuz" / "app.js"
+    if app_js_yol.exists():
+        arayuz_html += "\n" + app_js_yol.read_text(encoding="utf-8")
     for dil in ayarlar.ARAYUZ_SECENEK[("genel", "dil")]:
         if dil != "tr":
             dogrula(f"\n  {dil}: {{" in arayuz_html, f"CEVIRI sozlugunde '{dil}' var")
@@ -360,6 +363,9 @@ def main() -> int:
     bolum36_sohbet_modu()
     bolum37_araclar_paneli()
     bolum38_paketler()
+    bolum39_sablonlar()
+    bolum40_sesli_giris()
+    bolum41_zamanlayici()
 
     shutil.rmtree(kok, ignore_errors=True)
     print("\nSonuc: " + ("TUM TESTLER GECTI" if HATA == 0 else f"{HATA} test kaldi"))
@@ -1474,6 +1480,9 @@ def bolum35_donus_ozeti() -> None:
     dogrula(sahte_sohbet["arsiv"][0]["veri"]["kimlik"] == "abc123",
             "arsivdeki ozet olayi KIMLIGI tasiyor")
     arayuz_metni = (PAKET / "arayuz" / "index.html").read_text(encoding="utf-8")
+    app_js_yol = PAKET / "arayuz" / "app.js"
+    if app_js_yol.exists():
+        arayuz_metni += "\n" + app_js_yol.read_text(encoding="utf-8")
     dogrula('case "ozet": ozetKarti(v); break;' in arayuz_metni,
             "arayuz olay dagiticisinda 'ozet' dali var")
     dogrula("function ozetKarti(v)" in arayuz_metni, "ozet karti cizicisi tanimli")
@@ -1660,6 +1669,9 @@ def bolum36_sohbet_modu() -> None:
     # durumunu kuruyor (araclar_hepsi). gorev_baslat'a bayrak gitmiyor, JS
     # profil adi bilmiyor. 'sohbet' profili policy.toml'da CLI icin duruyor.
     arayuz = (PAKET / "arayuz" / "index.html").read_text(encoding="utf-8")
+    app_js_yol = PAKET / "arayuz" / "app.js"
+    if app_js_yol.exists():
+        arayuz += "\n" + app_js_yol.read_text(encoding="utf-8")
     # Ucuncu arguman 'ekip' (coklu ajan, /ekip on eki) — profil DEGIL; JS hala
     # profil adi bilmiyor.
     # Dorduncu arguman: sohbet ekranindaki model secici ("kimlik/model").
@@ -1974,5 +1986,250 @@ def bolum38_paketler() -> None:
         shutil.rmtree(kok, ignore_errors=True)
 
 
+def bolum39_sablonlar() -> None:
+    print("\n39) Gorev sablonlari (Faz 5.1: sablonlar.py)")
+    from pevrai import sablonlar
+    gecici = Path(tempfile.mkdtemp(prefix="pevrai_sablon_")).resolve()
+    eski_yol = sablonlar.YOL
+    sablonlar.YOL = gecici / "sablonlar.json"
+    try:
+        (gecici / "config").mkdir(parents=True, exist_ok=True)
+        (gecici / "config" / "komutlar.toml").write_text(
+            '[[komut]]\nad = "ozetle"\naciklama = "Ozetler"\nsablon = "Ozetle: "\n',
+            encoding="utf-8",
+        )
+        liste, hata = sablonlar.listele(gecici)
+        dogrula(hata is None and len(liste) == 1 and liste[0]["ad"] == "ozetle",
+                "yerlesik komutlar.toml okunuyor")
+
+        # Gecersiz ad ve sistem komutu reddi
+        dogrula(sablonlar.kaydet("", "Metin") is not None, "bos ad reddedildi")
+        dogrula(sablonlar.kaydet("ekip", "Metin") is not None, "sistem komutu (ekip) uzerine yazilamaz")
+        dogrula(sablonlar.kaydet("gecerli-ad", "") is not None, "bos sablon metni reddedildi")
+
+        # Turkce karakterli ve '/' ile baslayan ad temizleme + kaydetme
+        dogrula(sablonlar.kaydet("/Haftalık Özet", "Bu haftanin notlarini ozetle: ", "Haftalik rapor") is None,
+                "ozel sablon kaydedildi (/Haftalık Özet -> haftalik-ozet)")
+        ozel = sablonlar.oku_ozel()
+        dogrula(len(ozel) == 1 and ozel[0]["ad"] == "haftalik-ozet" and ozel[0]["ozel"] is True,
+                f"ozel sablon dogru temizlendi ve okundu ({ozel})")
+
+        # Birlesik liste
+        birlesik, hata2 = sablonlar.listele(gecici)
+        dogrula(hata2 is None and [x["ad"] for x in birlesik] == ["ozetle", "haftalik-ozet"],
+                "yerlesik ve ozel sablonlar birlestirildi")
+
+        # Ayni adla guncelleme
+        dogrula(sablonlar.kaydet("haftalik-ozet", "Yeni metin", "Yeni aciklama") is None,
+                "mevcut ozel sablon guncellendi")
+        dogrula(len(sablonlar.oku_ozel()) == 1 and sablonlar.oku_ozel()[0]["sablon"] == "Yeni metin",
+                "guncellenen sablon tek kayit olarak kaldi")
+
+        # Silme
+        dogrula(sablonlar.sil("olmayan") is not None, "olmayan sablon silinirken hata doner")
+        dogrula(sablonlar.sil("/haftalik-ozet") is None, "ozel sablon silindi")
+        dogrula(sablonlar.oku_ozel() == [], "silme sonrasi ozel sablon listesi bos")
+    finally:
+        sablonlar.YOL = eski_yol
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
+def bolum40_sesli_giris() -> None:
+    print("\n40) Sesli giris (Faz 5.4: ses.py + ayarlar_arayuz.py)")
+    from pevrai import ayarlar, ayarlar_arayuz, ses
+    gecici = Path(tempfile.mkdtemp(prefix="pevrai_ses_")).resolve()
+    eski_yol = ayarlar.ARAYUZ_YOL
+    eski_yol2 = ayarlar_arayuz.ARAYUZ_YOL
+    ayarlar.ARAYUZ_YOL = gecici / "arayuz.toml"
+    ayarlar_arayuz.ARAYUZ_YOL = gecici / "arayuz.toml"
+    try:
+        dogrula(ayarlar_arayuz.arayuz_oku()["sohbet"]["sesli_giris"] is False,
+                "sesli_giris varsayilan olarak kapali (False)")
+        dogrula(ses.etkin_mi() is False, "ses.etkin_mi() varsayilan olarak False")
+        sonuc_kapali = ses.dinle()
+        dogrula(sonuc_kapali["ok"] is False and ("kapalı" in (sonuc_kapali["hata"] or "").lower()
+                                                 or "disabled" in (sonuc_kapali["hata"] or "").lower()),
+                f"sesli_giris kapaliyken ses.dinle() reddediyor: {sonuc_kapali}")
+
+        dogrula(ayarlar_arayuz.arayuz_yaz("sohbet", "sesli_giris", True) is None,
+                "sohbet.sesli_giris True yazildi")
+        dogrula(ses.etkin_mi() is True, "ses.etkin_mi() acildiginda True doner")
+
+        # Alt sureci sahteleyerek SAPI tanima yaniti ve dis servis kullanmama garantisi
+        import subprocess as _sp
+        eski_run = ses.subprocess.run
+        cagrilan = {}
+
+        def _sahte_run(cmd, **kw):
+            cagrilan["cmd"] = cmd
+            return _sp.CompletedProcess(
+                cmd, 0,
+                stdout="OK:merhaba dunya\n",
+                stderr="",
+            )
+
+        ses.subprocess.run = _sahte_run
+        try:
+            sonuc_acik = ses.dinle(sure_sn=5)
+            dogrula(sonuc_acik["ok"] is True and sonuc_acik["metin"] == "merhaba dunya",
+                    f"acikken yerel SAPI ciktisi cozuldu: {sonuc_acik}")
+            dogrula("SpeechRecognitionEngine" in cagrilan["cmd"][-1],
+                    "Windows yerlesik System.Speech.Recognition.SpeechRecognitionEngine kullaniliyor")
+        finally:
+            ses.subprocess.run = eski_run
+    finally:
+        ayarlar.ARAYUZ_YOL = eski_yol
+        ayarlar_arayuz.ARAYUZ_YOL = eski_yol2
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
+def bolum41_zamanlayici() -> None:
+    print("\n41) Zamanlanmis gorevler (Faz 5.5: zamanlayici.py + pencere.py)")
+    from datetime import datetime, date, time
+    from pevrai import zamanlayici
+    gecici = Path(tempfile.mkdtemp(prefix="pevrai_zamanla_")).resolve()
+    eski_yol = zamanlayici.YOL
+    zamanlayici.YOL = gecici / "zamanlanmis_gorevler.json"
+
+    try:
+        # 1. Gecersiz girdi dogrulamasi
+        k, hata = zamanlayici.kaydet("", "Gorev metni")
+        dogrula(k is None and "başlığı boş" in (hata or "").lower(), "bos baslik reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "")
+        dogrula(k is None and "metni boş" in (hata or "").lower(), "bos gorev metni reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "Metin", siklik="saatlik")
+        dogrula(k is None and "geçersiz sıklık" in (hata or "").lower(), "gecersiz siklik reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "Metin", saat="25:99")
+        dogrula(k is None and "saat biçimi" in (hata or "").lower(), "gecersiz saat reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "Metin", mod="hayali")
+        dogrula(k is None and "geçersiz efor modu" in (hata or "").lower(), "gecersiz mod reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "Metin", siklik="haftalik", gun=7)
+        dogrula(k is None and "haftanın günü" in (hata or "").lower(), "gecersiz gun reddedildi")
+
+        k, hata = zamanlayici.kaydet("Baslik", "Metin", siklik="bir_kez", tarih="2026-13-40")
+        dogrula(k is None and "tarih biçimi" in (hata or "").lower(), "gecersiz tarih reddedildi")
+
+        # 2. Gecerli kayitlar (gunluk, haftalik, bir_kez)
+        simdi_sabit = datetime(2026, 10, 16, 8, 30, 0)
+        k_gun, hata_gun = zamanlayici.kaydet("Sabah Notlari", "Notlari ozetle", siklik="gunluk",
+                                            saat="09:00", mod="hizli", simdi=simdi_sabit)
+        dogrula(hata_gun is None and k_gun is not None, "gunluk gorev kaydedildi")
+        dogrula(k_gun["siklik"] == "gunluk" and k_gun["mod"] == "hizli", "gunluk gorev alanlari dogru")
+        dogrula(k_gun["sonraki_zaman"] == "2026-10-16 09:00", f"sonraki zaman dogru hesaplandi: {k_gun['sonraki_zaman']}")
+
+        k_hafta, hata_hafta = zamanlayici.kaydet("Haftalik Rapor", "Bu haftayi raporla", siklik="haftalik",
+                                                 saat="10:00", gun=6, mod="dengeli", simdi=simdi_sabit) # 6=Pazar (2026-10-18)
+        dogrula(hata_hafta is None and k_hafta is not None, "haftalik gorev kaydedildi")
+        dogrula(k_hafta["sonraki_zaman"] == "2026-10-18 10:00", f"haftalik sonraki zaman dogru: {k_hafta['sonraki_zaman']}")
+
+        k_tek, hata_tek = zamanlayici.kaydet("Ozel Kontrol", "Belgeleri tara", siklik="bir_kez",
+                                             tarih="2026-10-20", saat="14:00", mod="derin", simdi=simdi_sabit)
+        dogrula(hata_tek is None and k_tek is not None, "tek seferlik gorev kaydedildi")
+        dogrula(k_tek["sonraki_zaman"] == "2026-10-20 14:00", f"tek seferlik sonraki zaman dogru: {k_tek['sonraki_zaman']}")
+
+        tum = zamanlayici.listele(simdi=simdi_sabit)
+        dogrula(len(tum) == 3, f"3 zamanlanmis gorev listelendi ({len(tum)})")
+
+        # 3. vadesi_geldi_mi kontrolu (saf zaman mantigi)
+        # 08:30'da gunluk gorev (09:00) henuz vadesi gelmemistir
+        dogrula(zamanlayici.vadesi_geldi_mi(k_gun, simdi=datetime(2026, 10, 16, 8, 30)) is False,
+                "08:30'da 09:00 gorevi vadesi gelmedi (False)")
+        # 09:00'da vadesi gelmistir
+        dogrula(zamanlayici.vadesi_geldi_mi(k_gun, simdi=datetime(2026, 10, 16, 9, 0)) is True,
+                "09:00'da 09:00 gorevi vadesi geldi (True)")
+
+        # Baslatildi olarak isaretlenince ayni pencerede tekrar kosmaz
+        zamanlayici._isaretle_basladi(k_gun["id"], simdi=datetime(2026, 10, 16, 9, 0))
+        guncel_gun = next(x for x in zamanlayici._oku_ham() if x["id"] == k_gun["id"])
+        dogrula(zamanlayici.vadesi_geldi_mi(guncel_gun, simdi=datetime(2026, 10, 16, 9, 5)) is False,
+                "bugun calistiktan sonra ayni gun tekrar vadede gorunmez")
+        dogrula(zamanlayici.vadesi_geldi_mi(guncel_gun, simdi=datetime(2026, 10, 17, 9, 0)) is True,
+                "ertesi gun 09:00'da tekrar vadesi gelir")
+
+        # Haftalik gorev: Cuma gunu (16 Ekim) vadesi gelmez, Pazar (18 Ekim 10:00) gelir
+        dogrula(zamanlayici.vadesi_geldi_mi(k_hafta, simdi=datetime(2026, 10, 16, 10, 0)) is False,
+                "Cuma gunu Pazar gorevi tetiklenmez")
+        dogrula(zamanlayici.vadesi_geldi_mi(k_hafta, simdi=datetime(2026, 10, 18, 10, 0)) is True,
+                "Pazar gunu 10:00'da haftalik gorev vadesi gelir")
+
+        # Tek seferlik gorev: 20 Ekim 14:00'te vadede, kosunca etkin=False olur
+        dogrula(zamanlayici.vadesi_geldi_mi(k_tek, simdi=datetime(2026, 10, 20, 14, 0)) is True,
+                "tek seferlik gorev tarihinde vadede")
+        zamanlayici._isaretle_basladi(k_tek["id"], simdi=datetime(2026, 10, 20, 14, 0))
+        guncel_tek = next(x for x in zamanlayici._oku_ham() if x["id"] == k_tek["id"])
+        dogrula(guncel_tek["etkin"] is False, "tek seferlik gorev calisinca otomatik devre disi kalir")
+        dogrula(zamanlayici.vadesi_geldi_mi(guncel_tek, simdi=datetime(2026, 10, 20, 14, 5)) is False,
+                "devre disi gorev artik vadede olamaz")
+
+        # 4. Durum degistirme (duraklat / etkinlestir)
+        dogrula(zamanlayici.durum_degistir(k_hafta["id"], False) is None, "haftalik gorev duraklatildi")
+        guncel_hafta = next(x for x in zamanlayici._oku_ham() if x["id"] == k_hafta["id"])
+        dogrula(zamanlayici.vadesi_geldi_mi(guncel_hafta, simdi=datetime(2026, 10, 18, 10, 0)) is False,
+                "duraklatilan gorev vadesi gelse bile kosmaz")
+        dogrula(zamanlayici.durum_degistir(k_hafta["id"], True) is None, "haftalik gorev tekrar etkin")
+
+        # 5. Tetikleme ve Onay Kapisi / Kota Entegrasyonu
+        class _SahteKopru:
+            def __init__(self):
+                self._mesgul = False
+                self.gorevler_baslatildi = []
+            def calisiyor(self):
+                return self._mesgul
+            def gorev_baslat(self, gorev, mod=None, ekip=False, gosterim=None):
+                self.gorevler_baslatildi.append({"gorev": gorev, "mod": mod, "ekip": ekip, "gosterim": gosterim})
+
+        kopru = _SahteKopru()
+        # Mesgulken tetikleme reddedilir
+        kopru._mesgul = True
+        r_mesgul = zamanlayici.tetikle(kopru, k_hafta["id"])
+        dogrula(r_mesgul["ok"] is False and "durdur" in (r_mesgul["hata"] or "").lower(),
+                "kopru mesgulken tetikleme reddedildi")
+
+        # Bosta iken standart gorev_baslat ile baslatilir (profil verilmez, onay kapisi ve kota korunur)
+        kopru._mesgul = False
+        r_bos = zamanlayici.tetikle(kopru, k_hafta["id"])
+        dogrula(r_bos["ok"] is True and len(kopru.gorevler_baslatildi) == 1,
+                "kopru bostayken tetiklendi ve gorev_baslat cagrildi")
+        son_cagri = kopru.gorevler_baslatildi[0]
+        dogrula(son_cagri["gorev"] == "Bu haftayi raporla" and son_cagri["mod"] == "dengeli",
+                f"gorev metni ve efor modu dogru iletildi: {son_cagri}")
+        dogrula(son_cagri.get("profil") is None, "profil None — onay kapisi ve kotalar ATLANMIYOR")
+
+        # Silme
+        dogrula(zamanlayici.sil("olmayan_id") is not None, "olmayan gorev silinemez")
+        dogrula(zamanlayici.sil(k_gun["id"]) is None, "gunluk gorev silindi")
+        kalan = zamanlayici.listele()
+        dogrula(len(kalan) == 2 and not any(x["id"] == k_gun["id"] for x in kalan),
+                "silinen gorev listeden kalkti")
+
+        # 6. Pencere Api sozlesmesi ve calistir kurali
+        from pevrai import pencere
+        dogrula("calistir" not in Path(pencere.__file__).read_text(encoding="utf-8"),
+                "pencere.py icinde 'calistir' kelimesi YOK (sozlesme korundu)")
+        api = pencere.Api.__new__(pencere.Api)
+        api._kopru = kopru
+        api._okuma_kilit = __import__("threading").Lock()
+        api._okuma = type("_SahteOkuma", (), {"tick": lambda *a: None})()
+        api._one_al = lambda: None
+        api._kota_satirlari = lambda: []
+        api._guncelleme_acik = False
+        api._surukle_destegi = False
+
+        r_api_list = api.zamanlanmis_listele()
+        dogrula(r_api_list["ok"] is True and len(r_api_list["gorevler"]) == 2,
+                f"Api.zamanlanmis_listele 2 gorev dondu ({len(r_api_list['gorevler'])})")
+    finally:
+        zamanlayici.YOL = eski_yol
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
 if __name__ == "__main__":
     sys.exit(main())
+
+
+

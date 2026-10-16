@@ -13,6 +13,7 @@ from typing import Any
 import webview
 
 from pevrai import PAKET, PROJE_KOKU, ayarlar, ceviri, journal
+from pevrai.ceviri import t
 from pevrai.gate import Politika
 from pevrai.gui_kopru import Kopru
 from pevrai.olaylar import daraltma_guncelle
@@ -30,36 +31,11 @@ IKON = PAKET / "arayuz" / "pevrai.ico"
 BAGLAM_PENCERESI = 1_000_000
 
 
-def _pano_dosyalari() -> list[str]:
-    """Windows panosundaki dosya yollarini okur (Explorer'da 'Kopyala' ile
-    konan CF_HDROP). Tarayici clipboard API'si bunu vermez — DnD icin
-    kullandigimiz pywebviewFullPath da yalnizca surukle-birakta gelir, Ctrl+V
-    icin ayri bir yol gerekir. Windows disinda ya da panoda dosya yoksa bos liste."""
-    if sys.platform != "win32":
-        return []
-    import ctypes
-
-    user32, shell32 = ctypes.windll.user32, ctypes.windll.shell32
-    CF_HDROP = 15
-    yollar: list[str] = []
-    try:
-        if not user32.OpenClipboard(None):
-            return []
-        try:
-            h_drop = user32.GetClipboardData(CF_HDROP)
-            if h_drop:
-                adet = shell32.DragQueryFileW(h_drop, 0xFFFFFFFF, None, 0)
-                for i in range(adet):
-                    uzunluk = shell32.DragQueryFileW(h_drop, i, None, 0)
-                    arabellek = ctypes.create_unicode_buffer(uzunluk + 1)
-                    shell32.DragQueryFileW(h_drop, i, arabellek, uzunluk + 1)
-                    if arabellek.value:
-                        yollar.append(arabellek.value)
-        finally:
-            user32.CloseClipboard()
-    except Exception:
-        return []
-    return yollar
+from pevrai.pencere_yardimcilar import (
+    pano_dosyalari as _pano_dosyalari,
+    takilma_bekcisi as _takilma_bekcisi,
+    bagimliliklari_denetle as _bagimliliklari_denetle,
+)
 
 
 class Api:
@@ -204,6 +180,14 @@ class Api:
                 if not getattr(self, '_okuma_uyarildi', False):
                     olaylar.append({'tip':'hata','veri':{'mesaj':'Okuma Atölyesi bağlantısı: '+str(exc)}})
                     self._okuma_uyarildi = True
+            try:
+                simdi_sn = time.monotonic()
+                if simdi_sn - getattr(self, "_son_zamanlayici_sn", 0.0) >= 10.0:
+                    self._son_zamanlayici_sn = simdi_sn
+                    from pevrai import zamanlayici
+                    zamanlayici.vadesi_geleni_tetikle(self._kopru)
+            except Exception:
+                pass
         # Onay olayi kuyruktan BIR KEZ gectigi icin bu da bir kez tetiklenir.
         if any(o.get("tip") == "onay_gerekli" for o in olaylar):
             self._one_al()
@@ -275,10 +259,22 @@ class Api:
             return {"ok": False, "hata": ceviri.t("Önce çalışan görevi durdur: bir görev çalışırken başka sohbete geçilemez.")}
         return {"ok": True, "olaylar": arsiv, "proje_baglami": self._kopru.oturum.proje_baglami}
 
+    def sohbet_ara(self, terim: str) -> dict:
+        return {"ok": True, "sonuclar": self._kopru.sohbet_ara(str(terim or ""))}
+
     def sohbet_sil(self, sohbet_id: str) -> dict:
         if not self._kopru.sohbet_sil(sohbet_id):
             return {"ok": False, "hata": ceviri.t("Silinemedi.")}
         return {"ok": True}
+
+    def son_turu_geri_al(self) -> dict:
+        """Son gorev turunu arsivden ve model baglamindan cikarir."""
+        if self._kopru.calisiyor():
+            return {"ok": False, "hata": ceviri.t("Önce çalışan görevi durdur.")}
+        r = self._kopru.son_turu_geri_al()
+        if r is None:
+            return {"ok": False, "hata": ceviri.t("Geri alınacak mesaj bulunamadı.")}
+        return r
 
     def gecmis_ayari(self, acik: bool) -> dict:
         """Gecmis kapaliyken her gorev bagimsiz bir oturum (CLI davranisi)."""
@@ -289,15 +285,30 @@ class Api:
     # slash komutlari / bilgi
     # ------------------------------------------------------------------
     def komutlar(self) -> dict:
-        """config/komutlar.toml'dan okunur. Sablonlar kod degil, duz metindir."""
-        yol = KOK / "config" / "komutlar.toml"
-        if not yol.exists():
-            return {"ok": True, "komutlar": []}
-        try:
-            veri = tomllib.loads(yol.read_text(encoding="utf-8"))
-        except Exception as e:
-            return {"ok": False, "hata": f"komutlar.toml okunamadi: {e}"}
-        return {"ok": True, "komutlar": veri.get("komut", [])}
+        """config/komutlar.toml ve ~/.vekil/sablonlar.json'dan okunur. Sablonlar kod degil, duz metindir."""
+        from pevrai import sablonlar
+        liste, hata = sablonlar.listele(KOK)
+        if hata:
+            return {"ok": False, "hata": hata}
+        return {"ok": True, "komutlar": liste}
+
+    def sablon_kaydet(self, ad: str, sablon: str, aciklama: str = "") -> dict:
+        """Kullanici tanimli gorev sablonu kaydeder (kod icermez, yalnizca istem metni)."""
+        from pevrai import sablonlar
+        hata = sablonlar.kaydet(str(ad or ""), str(sablon or ""), str(aciklama or ""))
+        if hata:
+            return {"ok": False, "hata": hata}
+        liste, _ = sablonlar.listele(KOK)
+        return {"ok": True, "komutlar": liste}
+
+    def sablon_sil(self, ad: str) -> dict:
+        """Kullanici tanimli gorev sablonunu siler."""
+        from pevrai import sablonlar
+        hata = sablonlar.sil(str(ad or ""))
+        if hata:
+            return {"ok": False, "hata": hata}
+        liste, _ = sablonlar.listele(KOK)
+        return {"ok": True, "komutlar": liste}
 
     def karsilama_onerileri(self) -> dict:
         pol = self._politika
@@ -507,6 +518,43 @@ class Api:
         except OSError as e:
             return {"ok": False, "hata": f"Yazilamadi: {e}"}
         return {"ok": True, "yol": yol}
+
+    def sesli_dinle(self, sure_sn: int = 7) -> dict:
+        """Windows SAPI ile varsayilan mikrofondan tek cumlelik konusmayi metne cevirir."""
+        from pevrai import ses
+        return ses.dinle(int(sure_sn or 7))
+
+    def zamanlanmis_listele(self) -> dict:
+        from pevrai import zamanlayici
+        return {"ok": True, "gorevler": zamanlayici.listele()}
+
+    def zamanlanmis_kaydet(self, ad: str, gorev: str, siklik: str = "gunluk",
+                           saat: str = "09:00", mod: str = "dengeli", gun: int = 0,
+                           tarih: str = "", etkin: bool = True, gorev_id: str = "") -> dict:
+        from pevrai import zamanlayici
+        kayit, hata = zamanlayici.kaydet(
+            str(ad or ""), str(gorev or ""), str(siklik or "gunluk"),
+            str(saat or "09:00"), str(mod or "dengeli"), int(gun or 0),
+            str(tarih or ""), bool(etkin), str(gorev_id or ""),
+        )
+        return {"ok": hata is None, "hata": hata, "gorev": kayit, "gorevler": zamanlayici.listele()}
+
+    def zamanlanmis_sil(self, gorev_id: str) -> dict:
+        from pevrai import zamanlayici
+        hata = zamanlayici.sil(str(gorev_id or ""))
+        return {"ok": hata is None, "hata": hata, "gorevler": zamanlayici.listele()}
+
+    def zamanlanmis_durum(self, gorev_id: str, etkin: bool) -> dict:
+        from pevrai import zamanlayici
+        hata = zamanlayici.durum_degistir(str(gorev_id or ""), bool(etkin))
+        return {"ok": hata is None, "hata": hata, "gorevler": zamanlayici.listele()}
+
+    def zamanlanmis_tetikle(self, gorev_id: str) -> dict:
+        from pevrai import zamanlayici
+        sonuc = zamanlayici.tetikle(self._kopru, str(gorev_id or ""))
+        sonuc["gorevler"] = zamanlayici.listele()
+        return sonuc
+
 
     # ------------------------------------------------------------------
     # ayarlar
@@ -1141,7 +1189,10 @@ class Api:
 
     def kota(self) -> dict:
         """Bugun yapilan istek sayilari. YEREL sayim: kesin kota degil, tahmin."""
-        return {"ok": True, "satirlar": self._kota_satirlari()}
+        try:
+            return {"ok": True, "satirlar": self._kota_satirlari()}
+        except journal.KotaHatasi:
+            return {"ok": False, "hata": t("Günlük kullanım sayacı okunamadı; kalan kullanım bilinmiyor.")}
 
     def mod_kotasi(self, mod: str | None = None) -> dict:
         """Secili modun bugunku durumu — gorev BASLAMADAN once gosterilir.
@@ -1158,11 +1209,16 @@ class Api:
         d = pol.mod_coz(mod)
         rol = d["model"]
         tavan = pol.gunluk_tavan.get(rol, 0)          # 0 = tavan yok
-        kalan = max(0, tavan - journal.kota_sayaclari().get(rol, 0)) if tavan else None
+        try:
+            satirlar = self._kota_satirlari()
+        except journal.KotaHatasi:
+            return {"ok": False, "hata": t("Günlük kullanım sayacı okunamadı; kalan kullanım bilinmiyor.")}
+        satir = satirlar[0 if rol == "varsayilan" else 1]
+        kalan = max(0, tavan - satir["istek"]) if tavan else None
         return {
             "ok": True,
             "mod": mod or pol.varsayilan_mod,
-            "model": self._kota_satirlari()[0 if rol == "varsayilan" else 1]["model"],
+            "model": satir["model"],
             "tavan": tavan,
             "kalan": kalan,                            # None = tavan yok
             "adim_tavani": d["adim"],
@@ -1300,81 +1356,6 @@ class Api:
             return {"ok": True, "mesaj": journal.geri_al(yol)}
         except Exception as e:
             return {"ok": False, "hata": f"Geri alinamadi: {e}"}
-
-
-def _takilma_bekcisi(pencere: Any) -> None:
-    """Arayuz thread'i donarsa (Windows: "Python yanit vermiyor") butun
-    thread'lerin yigin izini ~/.vekil/takilma.log'a yazar.
-
-    Neden: 2026-09-15'te pencere dort kez dondu, WER raporunda yalnizca imza
-    var, Python yigini yok. Ilk donma py-spy ile yakalandi (_one_al ->
-    on_top kilitlenmesi, oradaki nota bak); bir sonrakinin de kanitla
-    gelmesi icin bu bekci duruyor.
-
-    Nasil: evaluate_js arayuz thread'inde Invoke ile kosar; o thread donmussa
-    cagri hic donmez. Bekci cagriyi yapmadan once faulthandler'in C duzeyi
-    zamanlayicisini kurar, cagri donerse iptal eder. Python duzeyinde
-    olcum YAPILMIYOR: gozlenen donmada GIL, .NET ozellik atamasinda bekleyen
-    thread'de kaldi; o durumda ne yeni thread baslar ne time.sleep doner
-    (ilk surum boyle sessiz kaldi). faulthandler'in zamanlayicisi GIL
-    istemez, dogrudan dosya tanimlayicisina yazar. Daemon thread, kapanisi
-    geciktirmez. Tek seferlik: ayni donma icin ust uste rapor gurultu olur.
-    """
-    import faulthandler
-    import time
-
-    ESIK_SN = 15.0
-
-    def _dongu() -> None:
-        time.sleep(5.0)
-        try:
-            yol = journal.KOK / "takilma.log"
-            yol.parent.mkdir(parents=True, exist_ok=True)
-            # Dosya acik kalmali: faulthandler yalnizca tanimlayiciyi tutar.
-            f = open(yol, "a", encoding="utf-8")
-            f.write(f"\n===== {time.strftime('%Y-%m-%d %H:%M:%S')} oturum basladi; "
-                    f"asagida 'Timeout' varsa arayuz thread'i {ESIK_SN:.0f} sn "
-                    f"yanit vermedi =====\n")
-            f.flush()
-        except Exception:
-            return
-        # Olu adam kolu: zamanlayici HIC iptal edilmez, her turda yeniden
-        # kurulur. Iptal edip uyuyan surumde donma uyku sirasinda gelirse
-        # (GIL kilitliyken sleep de donmez) yeniden kurulamiyordu — testte
-        # yakalandi. Tur suresi (ping + 3 sn) esigin cok altinda.
-        while True:
-            faulthandler.dump_traceback_later(ESIK_SN, repeat=False, file=f)
-            try:
-                pencere.evaluate_js("1")
-            except Exception:
-                pass
-            time.sleep(3.0)
-
-    threading.Thread(target=_dongu, daemon=True, name="pevrai-bekci").start()
-
-
-def _bagimliliklari_denetle() -> str | None:
-    """Ajan yolunun (vekil_v0 -> mcp_bridge) ihtiyac duydugu paketler bu
-    yorumlayicida var mi? pencere.py'nin kendisi mcp/google.genai'yi ICE
-    AKTARMAZ; ajan tembel yuklenir (gui_kopru._varsayilan_kosucu). Bu yuzden
-    yanlis yorumlayiciyla (.venv yerine sistem Python'u) acilan pencere
-    sorunsuz gorunur, ilk gorevde/yenilemede "No module named 'mcp'" ile
-    duser — ve hata sohbet balonunda cikar, nedeni anlasilmaz. Denetim bu
-    yuzden pencere ACILMADAN yapiliyor.
-    """
-    import importlib.util
-    # google.genai artik zorunlu degil: saglayici secime bagli (pevrai.model).
-    # Gemini seciliyken paket yoksa gorev basinda anlasilir bir hata doner.
-    eksik = [ad for ad in ("mcp", "httpx")
-             if importlib.util.find_spec(ad) is None]
-    if not eksik:
-        return None
-    venv = PROJE_KOKU / ".venv" / "Scripts" / "python.exe"
-    ipucu = (f"Proje sanal ortamiyla baslat (proje kokunden):\n  {venv} -m pevrai"
-             if venv.exists() else
-             f"Kur: {sys.executable} -m pip install -r requirements.txt")
-    return (f"Eksik paket(ler): {', '.join(eksik)}\n"
-            f"Calisan yorumlayici: {sys.executable}\n  {ipucu}")
 
 
 def main() -> int:

@@ -172,6 +172,8 @@ def ozet_metni(kayit: dict) -> str:
     satirlar.append("")
     satirlar.append(t("- **Bu görevde gönderilen model isteği:** {deger}", deger=kayit.get("istek", 0)))
     kotalar = kayit.get("kota") or {}
+    if kayit.get("kota_hatasi"):
+        satirlar.append(kayit["kota_hatasi"])
     if kotalar:
         for rol, (sayi, tavan) in sorted(kotalar.items()):
             durum = f"{sayi}/{tavan}" if tavan else t("{sayi} (tavan yok)", sayi=sayi)

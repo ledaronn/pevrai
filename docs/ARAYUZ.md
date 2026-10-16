@@ -388,7 +388,7 @@ adrese götürebilirdi.
 - [x] Üzerine yazma onayında fark görüntülenebiliyor
 - [x] `<untrusted_content>` çıktıları görsel olarak işaretli
 - [x] Araç çıktısındaki HTML/script arayüzde çalışmıyor (kaçışlama testi)
-- [ ] Sürükle-bırak ve düğmeyle dosya yükleme çalışıyor (henüz yapılmadı)
+- [x] Sürükle-bırak ve düğmeyle dosya yükleme çalışıyor (surukle_destegi + dosya_sec tamamlandı)
 - [x] Bağlam doluluk barı canlı güncelleniyor
 - [ ] Maliyet sayacı canlı güncelleniyor (henüz yapılmadı; bağlam barı çalışıyor)
 - [x] CLI hâlâ çalışıyor, `evals.py` kırılmadı

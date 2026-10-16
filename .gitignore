@@ -23,5 +23,10 @@ dist/
 *.sqlite3-wal
 *.sqlite3-shm
 
+# Yerel ajan devir belgesi; yayin agacina alinmaz.
+/AJAN_DEVIR.md
+/.yerel_devir_arsivi/
+/.agents/
+
 # Eski varsayilan calisma klasoru (artik ~/Pevrai, kullanici secer). Kisisel.
 /kum/

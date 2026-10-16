@@ -64,7 +64,8 @@ def main() -> int:
     from playwright.sync_api import sync_playwright
     html = PAKET / "arayuz" / "index.html"
     with sync_playwright() as p:
-        tarayici = p.chromium.launch(channel="chrome", headless=True)
+        from tarayici_test_ortami import baslat as test_tarayicisi
+        tarayici = test_tarayicisi(p, headless=True)
         sayfa = tarayici.new_page(viewport={"width": 1280, "height": 860})
         hatalar: list[str] = []
         sayfa.on("pageerror", lambda e: hatalar.append(str(e)))

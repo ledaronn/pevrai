@@ -34,6 +34,7 @@ PAKETLER = [
     ("ofis_testi.py", False),
     ("ag_eszamanli_testi.py", False),
     ("gunluk_eszamanli_testi.py", False),
+    ("kota_testi.py", False),
     ("model_zinciri_testi.py", False),
     ("evals.py", False),
     ("dusmanca_testi.py", False),

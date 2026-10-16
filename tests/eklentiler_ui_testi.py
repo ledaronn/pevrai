@@ -51,7 +51,8 @@ def main():
                 return {"ok": True, "olaylar": [], "sohbetler": [], "komutlar": [], "calisiyor": False}
             except Exception as exc:
                 return {"ok": False, "hata": str(exc)}
-        browser = pw.chromium.launch(channel="chrome", headless=True)
+        from tarayici_test_ortami import baslat as test_tarayicisi
+        browser = test_tarayicisi(pw, headless=True)
         # UTC: saat dilimi farki -0 olur (JS), Python tarafina float -0.0 gidiyordu (CI'da yakalandi)
         page = browser.new_page(viewport={"width": 1280, "height": 960}, timezone_id="UTC")
         errors = []

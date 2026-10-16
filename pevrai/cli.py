@@ -64,9 +64,10 @@ def main() -> None:
     """CLI giris noktasi (pyproject: pevrai-cli). sys.exit ile doner."""
     # --tani / --surum: model, MCP, pencere yuklenmeden. Dondurulmus surumde
     # "acilmiyor" sikayetinin ilk adimi: pevrai-cli.exe --tani
-    if sys.argv[1:2] in (["--tani"], ["--surum"], ["--version"]):
+    if sys.argv[1:2] in (["--tani"], ["--tani-ayrintili"], ["--surum"], ["--version"]):
         from pevrai import baslat
-        print(baslat.tanila() if sys.argv[1] == "--tani" else baslat.surum())
+        print(baslat.tanila(ayrintili=sys.argv[1] == "--tani-ayrintili")
+              if sys.argv[1].startswith("--tani") else baslat.surum())
         sys.exit(0)
     # Dongu (ve MCP baglantisi) yalnizca burada, komut satirindan cagrilinca yuklenir.
     from pevrai import vekil_v0 as _vekil

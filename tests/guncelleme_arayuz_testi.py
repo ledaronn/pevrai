@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 class GuncellemeArayuzu(unittest.TestCase):
     def test_bildirim_kapanir_indirme_sabit_kopruden_gecer(self):
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(channel="chrome", headless=True)
+            from tarayici_test_ortami import baslat as test_tarayicisi
+            browser = test_tarayicisi(pw, headless=True)
             try:
                 page = browser.new_page(viewport={"width":360,"height":780})
                 errors = []

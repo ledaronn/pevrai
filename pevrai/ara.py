@@ -73,3 +73,83 @@ def ara(kok: Path, sorgu: str, glob: str = "*",
         parcalar.append("ICERIKTE ESLESENLER:\n" + "\n".join(icerik_bulunan))
     parcalar.append(f"({taranan} dosya tarandi){gizli_notu}")
     return "\n\n".join(parcalar)
+
+
+def anlamsal_ara(
+    kok: Path,
+    sorgu: str,
+    glob: str = "*",
+    yasakli: Callable[[Path], object] | None = None,
+    limit: int = 15,
+) -> str:
+    """Yerel Ollama embedding ile metin dosyalarında anlamsal arama yapar.
+
+    Kara liste (yasakli) ara() ile birebir aynı şekilde uygulanır: yasaklı
+    dosyalar ne okunur ne de embedding'e gönderilir.
+    """
+    from pevrai import anlamsal
+
+    parcalar_liste: list[dict] = []
+    taranan = 0
+    gizlenen = 0
+
+    for p in kok.rglob(glob):
+        if not p.is_file():
+            continue
+        if yasakli is not None and yasakli(p):
+            gizlenen += 1
+            continue
+        if p.suffix.lower() not in METIN_UZANTILARI:
+            continue
+        try:
+            boyut = p.stat().st_size
+            if boyut <= 0 or boyut > MAX_DOSYA_BOYUTU:
+                continue
+            icerik = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        taranan += 1
+        satirlar = icerik.splitlines()
+        pencere: list[str] = []
+        bas_satir = 1
+        uzunluk = 0
+        for no, s in enumerate(satirlar, 1):
+            pencere.append(s)
+            uzunluk += len(s) + 1
+            if uzunluk >= 700 or no == len(satirlar):
+                govde = "\n".join(pencere).strip()
+                if govde:
+                    ozet = " ".join(govde.split())[:180]
+                    parcalar_liste.append({
+                        "yol": str(p),
+                        "bas": bas_satir,
+                        "son": no,
+                        "ozet": ozet,
+                        "metin": f"{p.name}\n{govde[:1200]}",
+                    })
+                pencere = []
+                bas_satir = no + 1
+                uzunluk = 0
+                if len(parcalar_liste) >= 200:
+                    break
+        if len(parcalar_liste) >= 200:
+            break
+
+    gizli_notu = (f" {gizlenen} dosya kara liste nedeniyle taranmadi (kimlik bilgisi "
+                  f"kalibi); bunlara erisilemez, sorma." if gizlenen else "")
+    if not parcalar_liste:
+        return t("Anlamsal arama için uygun metin dosyası bulunamadı ({taranan} dosya tarandı, kök: {kok}).{not_}",
+                 taranan=taranan, kok=kok, not_=gizli_notu)
+
+    sirali = anlamsal.metinleri_sirala(sorgu, parcalar_liste, metin_anahtari="metin", limit=limit, esik=0.15)
+    if not sirali:
+        return t("'{sorgu}' için anlamsal eşleşme bulunamadı ({taranan} dosya tarandı, kök: {kok}).{not_}",
+                 sorgu=sorgu, taranan=taranan, kok=kok, not_=gizli_notu)
+
+    cikti = [
+        f"[{x['score']:.2f}] {x['yol']}:{x['bas']}-{x['son']}: {x['ozet']}"
+        for x in sirali
+    ]
+    return "ANLAMSAL ESLESENLER:\n" + "\n".join(cikti) + f"\n\n({taranan} dosya tarandi){gizli_notu}"
+

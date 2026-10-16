@@ -102,6 +102,16 @@ def t(metin: str, **kw) -> str:
 # ---------------------------------------------------------------------------
 
 EN: dict[str, str] = {
+    "Günlük kullanım sayacı doğrulanamadı. Sınırı olan model isteği gönderilmedi. Sayaç dosyasını ve disk erişimini kontrol edin; sayaç otomatik sıfırlanmadı.":
+        "The daily usage counter could not be verified. The limited model request was not sent. Check the counter file and disk access; the counter was not reset automatically.",
+    "Günlük kullanım sayacı okunamadı; kalan kullanım bilinmiyor.":
+        "The daily usage counter could not be read; remaining usage is unknown.",
+    "gizli (paylaşılabilir tanı)": "hidden (shareable diagnostics)",
+    "bilinmeyen anahtar kaynağı": "unknown key source",
+    "Ayrıntılı tanı kişisel yollar ve hata ayrıntıları içerebilir; yalnızca yerelde kullanın.":
+        "Detailed diagnostics may include personal paths and error details; use locally only.",
+    "Bu tanı yolları ve hata ayrıntılarını gizler. Ayrıntılı yerel çıktı: --tani-ayrintili.":
+        "These diagnostics hide paths and error details. Detailed local output: --tani-ayrintili.",
     # --- onay karti: etki cumleleri (vekil_v0._etki_cumlesi) ---------------
     "yeni dosya oluşturulacak ({bayt} bayt)": "new file will be created ({bayt} bytes)",
     "ÜZERİNE YAZILACAK ({bayt} bayt, yedek alınır)": "WILL BE OVERWRITTEN ({bayt} bytes, backup kept)",
@@ -985,6 +995,7 @@ EN: dict[str, str] = {
     "Eklenti dosyaları bulunamadı.": "Plugin files were not found.",
     "Önce çalışan görevi durdur.": "Stop the running task first.",
     "Silinemedi.": "Could not be deleted.",
+    "Geri alınacak mesaj bulunamadı.": "No message found to rewind.",
     "Pencere hazır değil.": "The window is not ready yet.",
     "Çalışan bir ekip görevi yok.": "There is no team task running.",
     "Yalnızca yerel sürücüdeki yollar açılabilir.": "Only paths on a local drive can be opened.",
@@ -1370,5 +1381,46 @@ EN.update({
     "internette şu konuyu araştır: ": "research this topic on the web: ",
     "Şu klasördeki dosyaları listele: {yol}": "List files in this folder: {yol}",
     "Şu yazılabilir klasördeki dosyaları düzenle: {yol}": "Organize files in this writable folder: {yol}",
-    "bana şu konuda yardım et: ": "help me with: "
+    "bana şu konuda yardım et: ": "help me with: ",
+    "Şablon adı yalnızca küçük harf, rakam ve tire içerebilir (en fazla 40 karakter).":
+        "Template name can only contain lowercase letters, numbers, and hyphens (up to 40 characters).",
+    "Bu komut adı sistem tarafından kullanılıyor.": "This command name is reserved by the system.",
+    "Şablon metni boş olamaz.": "Template text cannot be empty.",
+    "Şablon metni çok uzun (en fazla {azami} karakter).": "Template text is too long (up to {azami} characters).",
+    "Şablon açıklaması çok uzun (en fazla {azami} karakter).": "Template description is too long (up to {azami} characters).",
+    "En fazla {azami} özel şablon kaydedilebilir.": "At most {azami} custom templates can be saved.",
+    "Silinecek özel şablon bulunamadı.": "Custom template to delete was not found.",
+    "Anlamsal arama yalnızca yerel Ollama (127.0.0.1 / localhost) ile çalışır; veri bilgisayardan çıkarılamaz.":
+        "Semantic search only works with local Ollama (127.0.0.1 / localhost); data cannot leave the computer.",
+    "Yerel Ollama bağlantı hatası: {hata}": "Local Ollama connection error: {hata}",
+    "Yerel Ollama embedding üretemedi (HTTP {kod}).": "Local Ollama could not generate embeddings (HTTP {kod}).",
+    "Yerel Ollama boş embedding döndürdü.": "Local Ollama returned an empty embedding.",
+    "Anlamsal arama için uygun metin dosyası bulunamadı ({taranan} dosya tarandı, kök: {kok}).{not_}":
+        "No suitable text files found for semantic search ({taranan} files scanned, root: {kok}).{not_}",
+    "'{sorgu}' için anlamsal eşleşme bulunamadı ({taranan} dosya tarandı, kök: {kok}).{not_}":
+        "No semantic matches found for '{sorgu}' ({taranan} files scanned, root: {kok}).{not_}",
+    "Yerel Ollama embedding ile anlamsal arama yap (varsayilan false).":
+        "Perform semantic search with local Ollama embeddings (default false).",
+    "Sesli giriş kapalı. Ayarlar > Genel altından etkinleştirebilirsiniz.":
+        "Voice input is disabled. You can enable it under Settings > General.",
+    "Sesli giriş yalnızca Windows'ta desteklenir.":
+        "Voice input is only supported on Windows.",
+    "Mikrofon zaten dinleniyor.": "Microphone is already listening.",
+    "Konuşma algılanamadı.": "No speech detected.",
+    "Windows konuşma tanıma başlatılamadı: {hata}":
+        "Windows speech recognition could not be started: {hata}",
+    "Sesli giriş zaman aşımına uğradı.": "Voice input timed out.",
+    "Görev başlığı boş olamaz.": "Task title cannot be empty.",
+    "Görev başlığı en fazla 60 karakter olabilir.": "Task title can be at most 60 characters.",
+    "Görev metni boş olamaz.": "Task text cannot be empty.",
+    "Görev metni en fazla 4000 karakter olabilir.": "Task text can be at most 4000 characters.",
+    "Geçersiz sıklık: '{siklik}'.": "Invalid frequency: '{siklik}'.",
+    "Saat biçimi 'SS:DD' (00:00 - 23:59) olmalıdır.": "Time format must be 'HH:MM' (00:00 - 23:59).",
+    "Geçersiz efor modu: '{mod}'.": "Invalid effort mode: '{mod}'.",
+    "Haftanın günü 0 (Pazartesi) ile 6 (Pazar) arasında olmalıdır.":
+        "Day of week must be between 0 (Monday) and 6 (Sunday).",
+    "Tarih biçimi 'YYYY-AA-GG' olmalıdır.": "Date format must be 'YYYY-MM-DD'.",
+    "Zamanlanmış görevler kaydedilemedi: {hata}": "Scheduled tasks could not be saved: {hata}",
+    "Görev bulunamadı: '{id}'.": "Task not found: '{id}'.",
 })
+

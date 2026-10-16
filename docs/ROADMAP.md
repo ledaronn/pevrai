@@ -1,4 +1,10 @@
-# Yol Haritası
+﻿# Yol Haritası
+
+**8 Ekim 2026 notu:** bu dosya erken geliştirme fazlarının tarihsel planıdır;
+açık kutular tek başına güncel eksik listesi değildir. Güncel öncelikler ve
+doğrulanmış sonuçlar [IYILESTIRME_PLANI.md](IYILESTIRME_PLANI.md) içindedir.
+Eski taslaktaki `shell.run` önerisi güncel güvenlik kararıyla geçersizdir:
+uygulamaya genel kabuk veya keyfi kod çalıştırma aracı eklenmez.
 
 Her faz **çalışan bir şey** bırakır. Bir faz, kabul kriterleri geçmeden bir sonrakine
 geçilmez. Süreler tek geliştirici ve haftada birkaç akşam varsayımıyla verilmiştir.
@@ -16,9 +22,9 @@ geçilmez. Süreler tek geliştirici ve haftada birkaç akşam varsayımıyla ve
 - Ham CLI (`python -m vekil "..."`), renk yok, süs yok
 
 **Kabul kriterleri**
-- [ ] "Bu klasördeki en büyük 3 dosyayı bul" görevi 3 araç çağrısıyla tamamlanır
-- [ ] Var olmayan bir yol verildiğinde model hatayı görüp yolu kendisi düzeltir
-- [ ] Sonsuz döngüye giren bir görev adım limitinde temiz durur
+- [x] "Bu klasördeki en büyük 3 dosyayı bul" görevi 3 araç çağrısıyla tamamlanır
+- [x] Var olmayan bir yol verildiğinde model hatayı görüp yolu kendisi düzeltir
+- [x] Sonsuz döngüye giren bir görev adım limitinde temiz durur
 
 **Kapsam dışı:** GUI, tarayıcı, hafıza, çoklu model, yazma işlemleri
 
@@ -41,10 +47,10 @@ geçilmez. Süreler tek geliştirici ve haftada birkaç akşam varsayımıyla ve
   borç yazılmalı.
 
 **Kabul kriterleri**
-- [ ] Yeni eklenen bir araç, politikada tanımlı değilse çalışmaz (varsayılan reddet)
-- [ ] `../../etc/passwd` benzeri bir yol kapıda reddedilir
-- [ ] Onay reddedildiğinde ajan çökmez, alternatif dener veya durur
-- [ ] Yanlışlıkla üzerine yazılan bir dosya günlükten geri alınabilir
+- [x] Yeni eklenen bir araç, politikada tanımlı değilse çalışmaz (varsayılan reddet)
+- [x] `../../etc/passwd` benzeri bir yol kapıda reddedilir
+- [x] Onay reddedildiğinde ajan çökmez, alternatif dener veya durur
+- [x] Yanlışlıkla üzerine yazılan bir dosya günlükten geri alınabilir
 - [x] Hiçbir `subprocess` çağrısı `shell=True` kullanmıyor (şu an hiç `subprocess` çağrısı yok, o yüzden geçmiş sayılır — Faz 2'de MCP sunucusu başlatılınca ilk gerçek `subprocess` çağrısı orada olacak, o zaman tekrar bakılmalı)
 
 **Kapsam dışı:** tarayıcı, GUI
@@ -61,9 +67,9 @@ geçilmez. Süreler tek geliştirici ve haftada birkaç akşam varsayımıyla ve
 - Araç yazım şablonu (yeni araç eklemek 20 dakikalık iş olmalı)
 
 **Kabul kriterleri**
-- [ ] Dönüştürücü hem Pevrai'dan hem Claude Desktop'tan çağrılabiliyor
-- [ ] MCP sunucusu çöktüğünde ajan çökmüyor, hatayı metin olarak alıyor
-- [ ] Yerel araç ile MCP aracı döngü açısından ayırt edilemiyor
+- [x] Dönüştürücü hem Pevrai'dan hem Claude Desktop'tan çağrılabiliyor
+- [x] MCP sunucusu çöktüğünde ajan çökmüyor, hatayı metin olarak alıyor
+- [x] Yerel araç ile MCP aracı döngü açısından ayırt edilemiyor
 
 ---
 
@@ -187,7 +193,7 @@ Faz 6'da tamamlandı — bkz. DEVIR_FAZ6 §1), maliyet/kota sayacı (`mod-kota` 
 - [x] Devam eden bir görevi durdurma düğmesi (kill switch)
 
 **Kabul kriterleri**
-- [ ] Kullanıcı, ajanın ne yaptığını arayüze bakarak anlıyor
+- [x] Kullanıcı, ajanın ne yaptığını arayüze bakarak anlıyor
 - [x] Çalışan bir görev tek tıkla, veri bırakmadan durdurulabiliyor
 
 **Not:** CLI'deki kill switch (`calistir()`'i saran `KeyboardInterrupt` yakalaması) kodda var

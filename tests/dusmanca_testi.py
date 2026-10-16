@@ -688,16 +688,17 @@ def bolum15_sinirlar() -> None:
         else:
             dogrula(True, f"profil '{ad}' kendiliginden devam ETMEZ (azami_devam=0)")
 
-    # --- Sayac diske yazilamazsa: BILINCLI fail-open ---------------------
+    # Disabled limits keep best-effort accounting; limited requests fail closed.
     eski_kota = journal.KOTA
     try:
-        journal.KOTA = Path("Z:\\olmayan_surucu\\kota.json")
-        journal.kota_artir("guclu")          # istisna SIZMAMALI
-        sayaclar = journal.kota_sayaclari()
-        dogrula(sayaclar == {}, "sayac okunamayinca bos donuyor, patlamiyor")
-        dogrula(gate.tavan_karari("guclu", sayaclar, T) is None,
-                "sayac yazilamazsa duvar SESSIZCE devre disi — BILINCLI fail-open, "
-                "kayitli acik (disk hatasi yuzunden Pevrai'yi kilitlemek orantisiz)")
+        # A file cannot contain a child counter path; no drive assumptions.
+        journal.KOTA = PROJE_KOKU / "policy.toml" / "kota.json"
+        journal.kota_artir("guclu")
+        try:
+            journal.kota_ayir("guclu", {"guclu": 1})
+            dogrula(False, "unwritable counter must block limited requests")
+        except journal.KotaHatasi:
+            dogrula(True, "unwritable counter blocks limited requests")
     finally:
         journal.KOTA = eski_kota
 

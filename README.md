@@ -14,6 +14,8 @@ on your machine; the only thing that leaves it is the text sent to the AI model 
 
 > Türkçe: [docs/README.tr.md](docs/README.tr.md) · Design docs (Turkish): [docs/](docs/)
 
+Detailed project introduction (Turkish): [docs/PROJE_TANITIMI.md](docs/PROJE_TANITIMI.md).
+
 ## What you can do with it
 
 - **Chat and give tasks.** Ask a question, or give a task that needs your files or the web.
@@ -155,6 +157,18 @@ python -m pevrai.vekil_v0 --geri-al [file]                   # undo
 python tests/evals.py                                        # gate + code tests (no model calls)
 python tests/dusmanca_testi.py                               # adversarial suite (no model calls)
 ```
+
+## Diagnostics
+
+Run `python -m pevrai --tani` for a support report that hides personal paths
+and raw error messages. Version, component availability and key source types
+remain visible. Missing optional packages do not stop the report.
+
+For local troubleshooting, `python -m pevrai --tani-ayrintili` includes paths
+and error details. Inspect that output before sharing it; it may contain
+personal information or secrets embedded in errors.
+
+These diagnostic enhancements are included in Pevrai 0.1.2.
 
 ## Tools and packages
 

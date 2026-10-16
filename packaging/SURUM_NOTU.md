@@ -1,3 +1,24 @@
+## Pevrai 0.1.2
+
+- **Streaming responses:** Real-time token streaming across Gemini, OpenAI-compatible, and Anthropic providers with instant cancellation support.
+- **Scalable chat loading:** Lazy-loaded chat archives via lightweight index cache, reducing startup memory and opening large histories on demand.
+- **Task & prompt templates:** Manage reusable prompts via `/` menu, quick insertion from messages, and dedicated management UI.
+- **Local semantic search:** Safe cosine similarity search backed by local Ollama instances (`127.0.0.1` / `localhost`) and SQLite caching; external endpoints are strictly blocked. Integrated with Smart Notes and workspace files.
+- **Reader enhancements (Okuma Atölyesi):** Turkish stem-aware search (`tr_kokler`), multi-column PDF text selection isolation, and thumbnail sidebar panel.
+- **Voice input:** Offline speech-to-text powered by Windows built-in SAPI (`System.Speech.Recognition`), disabled by default for privacy.
+- **Scheduled & recurring tasks:** Daily, weekly, and one-shot recurring task scheduling governed by the exact same strict permission gate (`gate.py`) and quota limits (`journal.kota_ayir`).
+- **Architecture & maintainability:** Splitted monolithic frontend (`app.js`, `stil.css`) and backend modules while preserving zero-build/zero-CDN and strict security boundaries.
+
+**Türkçe:**
+- **Gerçek akışlı yanıtlar:** Gemini, OpenAI-uyumlu ve Anthropic sağlayıcılarında gerçek zamanlı token akışı ve anında durdurma desteği.
+- **Ölçeklenebilir sohbet yükleme:** Hafif indeks önbelleği ile tembel yükleme (lazy loading); açılış süresi ve bellek tüketimi düşürüldü.
+- **İstem ve görev şablonları:** `/` menüsüyle hızlı çağrılabilen şablonlar, mesajlardan şablon kaydetme ve yönetim paneli.
+- **Yerel anlamsal arama:** Yalnızca yerel Ollama (`127.0.0.1` / `localhost`) ile çalışan, SQLite önbellekli kosinüs benzerliği motoru; Smart Notes ve çalışma alanı dosyalarına bağlandı.
+- **Okuma Atölyesi geliştirmeleri:** Türkçe kök bulmalı tam metin arama (`tr_kokler`), çok sütunlu sayfalarda sütun içi seçim yalıtımı ve küçük resimler sekmesi.
+- **Sesli giriş:** Windows yerleşik çevrimdışı SAPI motoruyla yerel mikrofon girişi (varsayılan kapalı).
+- **Zamanlanmış görevler:** Günlük, haftalık ve tek seferlik yerel görev zamanlayıcı; tüm onay kapısı ve kota kuralları korunur.
+- **Modüler mimari:** `index.html` ve büyük Python modülleri bölündü, CDN/eval yasağı ve güvenlik sınırları korundu.
+
 ## Pevrai 0.1.1
 
 - Limina is now Pevrai. Existing installation identity, settings and chats remain compatible.
@@ -11,6 +32,7 @@
 uyumluluk korunur. İsteğe bağlı günlük güncelleme bildirimi, ofis kartından ajan
 düzenleme ve test süreçlerinin temizlenmesi eklendi. Paket sürümü ve MCP yanıtı
 yalıtılmış ortamda, süre sınırıyla doğrulanır; yayın öncesinde kaynak testleri çalışır.
+
 
 ## Download
 

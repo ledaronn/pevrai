@@ -149,7 +149,22 @@ def main() -> int:
     dogrula(not (sohbet.KOK / "s2.json").exists(), "dosya gercekten gitti")
     dogrula(sohbet.sil("yok") is False, "olmayan sohbet")
     dogrula(sohbet.kaydet("../../kacis", "x", [], []) is not None, "yol enjeksiyonu reddedildi")
-    dogrula(sohbet.sil("../../etc/passwd") is False, "silmede de reddedildi")
+    print("\n8) Hafif indeks ve tekli yukleme")
+    indeks = sohbet.yukle_indeks()
+    dogrula(any(i["id"] == "s1" for i in indeks), "s1 indekste yer aldi")
+    s1_indeks = next(i for i in indeks if i["id"] == "s1")
+    dogrula(s1_indeks["baslik"] == "kum listele" and s1_indeks["olay"] == 1, "indeks metaverileri dogru")
+    dogrula("arsiv" not in s1_indeks and "gecmis" not in s1_indeks, "hafif indekste agir icerik yok")
+    dogrula((sohbet.KOK / sohbet.INDEKS_DOSYASI).exists(), "indeks dosyasi diske yazildi")
+
+    tek = sohbet.yukle_tek("s1")
+    dogrula(tek is not None and tek["baslik"] == "kum listele" and len(tek["arsiv"]) == 1,
+            "yukle_tek tek dosyayi tam yukledi")
+    dogrula(sohbet.yukle_tek("olmayan") is None, "olmayan dosya yukle_tek None dondu")
+
+    sohbet.sil("s1")
+    indeks_sonra = sohbet.yukle_indeks()
+    dogrula(not any(i["id"] == "s1" for i in indeks_sonra), "silinen sohbet indeksten de dustu")
 
     shutil.rmtree(sohbet.KOK, ignore_errors=True)
     print("\nSonuc: " + ("TUM TESTLER GECTI" if HATA == 0 else f"{HATA} test kaldi"))

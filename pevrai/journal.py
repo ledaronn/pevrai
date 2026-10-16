@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import tempfile
 import threading
+from collections.abc import Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -27,54 +29,124 @@ KOTA = KOK / "kota.json"
 ROLLER = ("varsayilan", "guclu")
 
 
+class KotaHatasi(Exception):
+    """The usage counter cannot safely authorize a limited request."""
+
+    def __init__(self) -> None:
+        super().__init__(t("Günlük kullanım sayacı doğrulanamadı. Sınırı olan model isteği gönderilmedi. Sayaç dosyasını ve disk erişimini kontrol edin; sayaç otomatik sıfırlanmadı."))
+
+
 def _hazirla() -> None:
     YEDEK.mkdir(parents=True, exist_ok=True)
 
 
 def kota_artir(rol: str) -> None:
-    """Bir istegi ROL bazinda sayar. Gun degisince sayaclar sifirlanir.
+    """Best-effort accounting ONLY for requests with their daily limit disabled.
 
-    ROL bazinda, model ADI bazinda degil: iki rol ayni model adini
-    paylasabiliyor, ad bazli sayim ikisini tek kovada eritirdi.
-
-    Hata yutulur — ama BUNUN BEDELI VAR: sayac yazilamazsa gunluk tavan
-    duvari da sessizce calismaz (bkz. _model_cagir). Bilinen acik.
+    Limited requests must use kota_ayir, which also makes the limit decision.
+    A damaged counter is never overwritten, even with the limit disabled.
     """
     if rol not in ROLLER:
         return
-    try:
-        _hazirla()
-        # Oku-artir-yaz: ekip iscileri ayri surecler; kilitsiz iki surec ayni
-        # degeri okuyup ikisi de +1 yazinca bir istek sayilmazdi (tavan gevser).
-        with _gunluk_kilidi():
-            bugun = datetime.now().strftime("%Y-%m-%d")
-            veri = {"tarih": bugun, "sayaclar": {}}
-            if KOTA.exists():
-                mevcut = json.loads(KOTA.read_text(encoding="utf-8"))
-                if mevcut.get("tarih") == bugun:
-                    veri = mevcut
-            veri["sayaclar"][rol] = veri["sayaclar"].get(rol, 0) + 1
-            KOTA.write_text(json.dumps(veri, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
+    import time
+    for deneme in range(10):
+        try:
+            _kota_ayir(rol, {})
+            return
+        except KotaHatasi:
+            if deneme < 9:
+                time.sleep(0.005 * (deneme + 1))
 
 
 def kota_sayaclari() -> dict[str, int]:
-    """Bugun rol basina kac istek yapildi. SADECE SAYI.
+    """Today's counts; missing file is fresh, damaged/inaccessible data is an error.
 
-    Tavan burada yok: tavan bir politika karari ve politikanin tek okuyucusu
-    gate.Politika. Bu modul policy.toml'u okumaz — iki okuyucu iki dogru olur
-    ve ayarlardan degisen tavan sessizce etkisiz kalirdi.
+    Atomic replacement makes readers see a complete old or new snapshot.
+    Only gate.Politika reads policy.toml; this module never does.
     """
     try:
-        if not KOTA.exists():
-            return {}
-        veri = json.loads(KOTA.read_text(encoding="utf-8"))
-        if veri.get("tarih") != datetime.now().strftime("%Y-%m-%d"):
-            return {}
-        return {r: int(n) for r, n in veri.get("sayaclar", {}).items() if r in ROLLER}
-    except Exception:
+        return _kota_oku(datetime.now().strftime("%Y-%m-%d"))
+    except (OSError, ValueError, TypeError):
+        raise KotaHatasi() from None
+
+
+def _kota_nesne(ciftler):
+    veri = {}
+    for ad, deger in ciftler:
+        if ad in veri:
+            raise ValueError("Duplicate counter field")
+        veri[ad] = deger
+    return veri
+
+
+def _kota_oku(bugun: str) -> dict[str, int]:
+    try:
+        metin = KOTA.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    veri = json.loads(metin, object_pairs_hook=_kota_nesne)
+    if not isinstance(veri, dict) or not isinstance(veri.get("tarih"), str):
+        raise ValueError("Invalid counter schema")
+    tarih = veri["tarih"]
+    if datetime.strptime(tarih, "%Y-%m-%d").strftime("%Y-%m-%d") != tarih or tarih > bugun:
+        raise ValueError("Invalid counter date")
+    sayaclar = veri.get("sayaclar")
+    if not isinstance(sayaclar, dict) or any(
+            r not in ROLLER or type(n) is not int or n < 0 for r, n in sayaclar.items()):
+        raise ValueError("Invalid counter values")
+    # Validate old records too: corruption must not become a fresh budget.
+    return sayaclar if tarih == bugun else {}
+
+
+def _kota_yaz(bugun: str, sayaclar: dict[str, int]) -> None:
+    gecici = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=KOTA.parent,
+                                         prefix=".kota-", suffix=".tmp", delete=False) as f:
+            gecici = Path(f.name)
+            json.dump({"tarih": bugun, "sayaclar": sayaclar}, f, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(gecici, KOTA)
+    finally:
+        if gecici is not None:
+            try:
+                gecici.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def kota_ayir(rol: str, tavanlar: Mapping[str, int]) -> tuple[int, int] | None:
+    """Reserve one attempt atomically; return (count, limit) if already full.
+
+    0 explicitly disables this role's limit and keeps best-effort accounting.
+    A reservation is not refunded after a provider error: retries are requests.
+    """
+    tavan = tavanlar.get(rol, 0)
+    if rol not in ROLLER or type(tavan) is not int or tavan < 0:
+        raise KotaHatasi()
+    if not tavan:
+        kota_artir(rol)
+        return None
+    return _kota_ayir(rol, tavanlar)
+
+
+def _kota_ayir(rol: str, tavanlar: Mapping[str, int]) -> tuple[int, int] | None:
+    from pevrai.gate import tavan_karari
+
+    try:
+        KOK.mkdir(parents=True, exist_ok=True)
+        with _gunluk_kilidi(zorunlu=True):
+            bugun = datetime.now().strftime("%Y-%m-%d")
+            sayaclar = _kota_oku(bugun)
+            dolu = tavan_karari(rol, sayaclar, tavanlar)
+            if dolu:
+                return dolu
+            sayaclar[rol] = sayaclar.get(rol, 0) + 1
+            _kota_yaz(bugun, sayaclar)
+    except (OSError, ValueError, TypeError):
+        raise KotaHatasi() from None
+    return None
 
 
 def cope_tasi(yol: Path) -> Path:
@@ -102,7 +174,7 @@ _KILIT = threading.Lock()
 
 
 @contextmanager
-def _gunluk_kilidi():
+def _gunluk_kilidi(*, zorunlu: bool = False):
     """Gunluge yazan HER surec icin tek sira.
 
     Ekip iscileri ayri surecler ve ayni journal.jsonl'e yazar. Windows'ta "a"
@@ -112,8 +184,8 @@ def _gunluk_kilidi():
     yazmanin GERI ALMA bilgisidir. Surec ici thread'ler icin _KILIT, surecler
     arasi icin isletim sistemi dosya kilidi (journal.lock).
 
-    Kilit alinamazsa (LK_LOCK ~10 sn dener) yine de yazilir: kaydi hic
-    yazmamak, nadir bir cakisma riskinden daha kotu.
+    Journal keeps its best-effort fallback. Quota reservations require the
+    lock (zorunlu=True), and must never continue after lock acquisition fails.
     """
     with _KILIT:
         f = open(KOK / "journal.lock", "a+b")
@@ -129,7 +201,8 @@ def _gunluk_kilidi():
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 kilitli = True
             except OSError:
-                pass
+                if zorunlu:
+                    raise
             yield
         finally:
             if kilitli:

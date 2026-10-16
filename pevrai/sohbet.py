@@ -147,6 +147,69 @@ def zinciri_dogrula(sozlukler: list[dict]) -> tuple[list[dict], str | None]:
 # Disk
 # ---------------------------------------------------------------------------
 
+INDEKS_DOSYASI = ".indeks"
+
+
+def _indeks_yolu() -> Path:
+    return KOK / INDEKS_DOSYASI
+
+
+def _indeks_oku() -> dict[str, dict]:
+    yol = _indeks_yolu()
+    if not yol.exists():
+        return {}
+    try:
+        veri = json.loads(yol.read_text(encoding="utf-8"))
+        return veri.get("sohbetler", {}) if isinstance(veri, dict) else {}
+    except Exception:
+        return {}
+
+
+def _indeks_yaz(indeks: dict[str, dict]) -> None:
+    try:
+        _hazirla()
+        yol = _indeks_yolu()
+        if not indeks:
+            if yol.exists():
+                yol.unlink()
+            return
+        gecici = yol.with_suffix(".yeni")
+        veri = {"surum": BICIM_SURUMU, "sohbetler": indeks}
+        gecici.write_text(json.dumps(veri, ensure_ascii=False), encoding="utf-8")
+        gecici.replace(yol)
+    except Exception:
+        pass
+
+
+def _indeks_guncelle(kimlik: str, baslik: str, guncelleme: str, olay_sayisi: int,
+                     proje_baglami: dict | None, dosya: Path) -> None:
+    try:
+        indeks = _indeks_oku()
+        stat = dosya.stat()
+        indeks[kimlik] = {
+            "id": kimlik,
+            "baslik": baslik,
+            "guncelleme": guncelleme,
+            "olay": olay_sayisi,
+            "proje_baglami": proje_baglami,
+            "boyut": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+        _indeks_yaz(indeks)
+    except Exception:
+        pass
+
+
+def _indeks_sil(kimlik: str) -> None:
+    try:
+        indeks = _indeks_oku()
+        if kimlik in indeks:
+            del indeks[kimlik]
+            _indeks_yaz(indeks)
+    except Exception:
+        pass
+
+
 def kaydet(kimlik: str, baslik: str, arsiv: list[dict], gecmis: list[Any],
            guncelleme: str | None = None,
            proje_baglami: dict | None = None) -> str | None:
@@ -162,11 +225,12 @@ def kaydet(kimlik: str, baslik: str, arsiv: list[dict], gecmis: list[Any],
         return f"Gecersiz sohbet kimligi: {kimlik!r}"
     try:
         _hazirla()
+        guncel_an = guncelleme or datetime.now().isoformat(timespec="seconds")
         veri = {
             "surum": BICIM_SURUMU,
             "id": kimlik,
             "baslik": baslik,
-            "guncelleme": guncelleme or datetime.now().isoformat(timespec="seconds"),
+            "guncelleme": guncel_an,
             "arsiv": arsiv,
             "gecmis": [_content_sozluge(c) for c in gecmis],
             "proje_baglami": proje_baglami,
@@ -174,48 +238,133 @@ def kaydet(kimlik: str, baslik: str, arsiv: list[dict], gecmis: list[Any],
         gecici = yol.with_suffix(".json.yeni")
         gecici.write_text(json.dumps(veri, ensure_ascii=False), encoding="utf-8")
         gecici.replace(yol)     # atomik: yarim yazilmis dosya birakmaz
+        _indeks_guncelle(kimlik, baslik, guncel_an, len(arsiv), proje_baglami, yol)
         return None
     except Exception as e:
         return f"Sohbet kaydedilemedi ({type(e).__name__}: {e})"
 
 
-def yukle_hepsi() -> list[dict]:
-    """Kayitli sohbetleri okur. Dosya sirasiyla doner; SIRALAMA BURADA DEGIL,
-    gui_kopru.sohbet_sirasi'nda (tek kaynak — arayuz yalnizca gosterir).
+def yukle_tek(kimlik: str) -> dict | None:
+    """Tek bir sohbet dosyasini tam okur ve dogrular."""
+    yol = _yol(kimlik)
+    if yol is None or not yol.exists():
+        return None
+    try:
+        stat = yol.stat()
+        dosya_zamani = datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds")
+        veri = json.loads(yol.read_text(encoding="utf-8"))
+        guncelleme = veri.get("guncelleme") or dosya_zamani
+        if veri.get("surum") != BICIM_SURUMU:
+            return {
+                "id": veri.get("id", yol.stem),
+                "baslik": veri.get("baslik", ""),
+                "guncelleme": guncelleme,
+                "arsiv": veri.get("arsiv", []),
+                "gecmis": [],
+                "uyari": "Sohbet dosyasi eski bir bicimde. Metin acildi ama "
+                         "baglam yuklenmedi: buradan devam edersen ajan "
+                         "onceki konusmayi hatirlamaz.",
+                "proje_baglami": veri.get("proje_baglami"),
+            }
+        gecmis, uyari = zinciri_dogrula(veri.get("gecmis", []))
+        return {
+            "id": veri.get("id", yol.stem),
+            "baslik": veri.get("baslik", ""),
+            "guncelleme": guncelleme,
+            "arsiv": veri.get("arsiv", []),
+            "gecmis": gecmis,
+            "uyari": uyari,
+            "proje_baglami": veri.get("proje_baglami"),
+        }
+    except Exception as e:
+        return {
+            "id": yol.stem,
+            "baslik": yol.stem,
+            "guncelleme": dosya_zamani,
+            "arsiv": [],
+            "gecmis": [],
+            "uyari": f"Sohbet dosyasi okunamadi ({type(e).__name__}), bos acildi.",
+        }
 
-    Her ogede: id, baslik, guncelleme, arsiv, gecmis (sozluk halinde), uyari.
-    guncelleme dosyadan gelir; okunamayan/eski bicimli dosyada dosyanin
-    degisiklik zamani kullanilir — sirada bir yere oturmasi gerekiyor.
-    Content'e cevirme cagirana birakildi — bu modul model kutuphanesini
-    ice aktarmak zorunda kalmasin diye.
+
+def yukle_indeks() -> list[dict]:
+    """Kayitli sohbetlerin hafif indeksini doner. Dosyalarin tamamini okumaz.
+
+    Her ogede: id, baslik, guncelleme, olay, proje_baglami, boyut.
     """
     if not KOK.exists():
         return []
-    cikti = []
-    for yol in sorted(KOK.glob("*.json"), key=lambda p: p.stat().st_mtime):
-        dosya_zamani = datetime.fromtimestamp(yol.stat().st_mtime).isoformat(timespec="seconds")
+
+    mevcut_indeks = _indeks_oku()
+    indeks_degisti = False
+    guncel_indeks: dict[str, dict] = {}
+    sonuclar: list[dict] = []
+
+    dosyalar = [p for p in KOK.glob("*.json") if not p.name.startswith("_")]
+    dosyalar.sort(key=lambda p: p.stat().st_mtime)
+
+    for yol in dosyalar:
+        kimlik = yol.stem
+        try:
+            stat = yol.stat()
+        except OSError:
+            continue
+
+        kayit = mevcut_indeks.get(kimlik)
+        if kayit and kayit.get("mtime") == stat.st_mtime and kayit.get("boyut") == stat.st_size:
+            guncel_indeks[kimlik] = kayit
+            sonuclar.append(dict(kayit))
+            continue
+
+        indeks_degisti = True
+        dosya_zamani = datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds")
         try:
             veri = json.loads(yol.read_text(encoding="utf-8"))
-        except Exception as e:
-            cikti.append({"id": yol.stem, "baslik": yol.stem, "guncelleme": dosya_zamani,
-                          "arsiv": [], "gecmis": [],
-                          "uyari": f"Sohbet dosyasi okunamadi ({type(e).__name__}), "
-                                   f"bos acildi."})
-            continue
-        guncelleme = veri.get("guncelleme") or dosya_zamani
-        if veri.get("surum") != BICIM_SURUMU:
-            cikti.append({"id": veri.get("id", yol.stem), "baslik": veri.get("baslik", ""),
-                          "guncelleme": guncelleme,
-                          "arsiv": veri.get("arsiv", []), "gecmis": [],
-                          "uyari": "Sohbet dosyasi eski bir bicimde. Metin acildi ama "
-                                   "baglam yuklenmedi: buradan devam edersen ajan "
-                                   "onceki konusmayi hatirlamaz."})
-            continue
-        gecmis, uyari = zinciri_dogrula(veri.get("gecmis", []))
-        cikti.append({"id": veri.get("id", yol.stem), "baslik": veri.get("baslik", ""),
-                      "guncelleme": guncelleme,
-                      "arsiv": veri.get("arsiv", []), "gecmis": gecmis, "uyari": uyari,
-                      "proje_baglami": veri.get("proje_baglami")})
+            baslik = veri.get("baslik") or kimlik
+            guncelleme = veri.get("guncelleme") or dosya_zamani
+            olay_sayisi = len(veri.get("arsiv", []))
+            proje = veri.get("proje_baglami")
+        except Exception:
+            baslik = kimlik
+            guncelleme = dosya_zamani
+            olay_sayisi = 0
+            proje = None
+
+        yeni_kayit = {
+            "id": kimlik,
+            "baslik": baslik,
+            "guncelleme": guncelleme,
+            "olay": olay_sayisi,
+            "proje_baglami": proje,
+            "boyut": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+        guncel_indeks[kimlik] = yeni_kayit
+        sonuclar.append(dict(yeni_kayit))
+
+    if indeks_degisti or len(guncel_indeks) != len(mevcut_indeks):
+        _indeks_yaz(guncel_indeks)
+
+    return sonuclar
+
+
+def yukle_hepsi(hafif: bool = False) -> list[dict]:
+    """Kayitli sohbetleri okur.
+    hafif=True ise yalnizca indeks bilgilerini doner.
+    hafif=False (varsayilan) ise eski sozlesmeyle tum dosyalari tam yukler.
+    """
+    if hafif:
+        return yukle_indeks()
+
+    if not KOK.exists():
+        return []
+    cikti = []
+    dosyalar = [p for p in KOK.glob("*.json") if not p.name.startswith("_")]
+    dosyalar.sort(key=lambda p: p.stat().st_mtime)
+    for yol in dosyalar:
+        tek = yukle_tek(yol.stem)
+        if tek:
+            cikti.append(tek)
     return cikti
 
 
@@ -239,6 +388,7 @@ def sil(kimlik: str) -> bool:
         return False
     try:
         yol.unlink()
+        _indeks_sil(kimlik)
         return True
     except OSError:
         return False

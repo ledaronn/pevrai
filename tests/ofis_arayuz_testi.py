@@ -80,7 +80,8 @@ SAHTE = """() => {
 
 
 def sayfa_ac(p, genislik=1280, yukseklik=860, args=None):
-    tarayici = p.chromium.launch(channel="chrome", headless=True, args=args if args is not None else WEBGL_ARGS)
+    from tarayici_test_ortami import baslat as test_tarayicisi
+    tarayici = test_tarayicisi(p, headless=True, args=args if args is not None else WEBGL_ARGS)
     sayfa = tarayici.new_page(viewport={"width": genislik, "height": yukseklik})
     hatalar: list[str] = []
     sayfa.on("pageerror", lambda e: hatalar.append(str(e)))
@@ -709,7 +710,8 @@ def uctan_uca(p) -> None:
         print(r.stdout[-1500:]); return
     olaylar = [{"tip": o["tip"].lower(), "veri": o["veri"]} for o in json.loads(dokum.read_text(encoding="utf-8"))]
     dogrula(all(o["veri"].get("masa") for o in olaylar if o["tip"] == "arac_cagrildi"), f"{len(olaylar)} olay; her arac cagrisinda masa var")
-    tarayici = p.chromium.launch(channel="chrome", headless=True, args=["--disable-3d-apis"])
+    from tarayici_test_ortami import baslat as test_tarayicisi
+    tarayici = test_tarayicisi(p, headless=True, args=["--disable-3d-apis"])
     sayfa = tarayici.new_page()
     sayfa.goto((PAKET / "arayuz" / "index.html").as_uri()); sayfa.wait_for_timeout(300)
     sonuc = sayfa.evaluate("""(olaylar) => {

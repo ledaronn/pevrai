@@ -14,10 +14,6 @@ class Service(Base):
                 return {"id": item["id"], "revision": item["revision"], "body": body[start:start + length],
                         "total_characters": len(body), "next_offset": min(start + length, len(body)), "done": start + length >= len(body)}
             if name == "note_search":
-                words = re.findall(r"\w+", args["query"], re.UNICODE)
-                if not words:
-                    return {"items": [], "total": 0}
-                query = " AND ".join('"' + word + '"' for word in words)
                 scope = args.get("scope", "active")
                 filters = {
                     "active": "coalesce(json_extract(r.data,'$.deleted'),0)=0 AND coalesce(json_extract(r.data,'$.archived'),0)=0",
@@ -26,6 +22,25 @@ class Service(Base):
                 }
                 if scope not in filters:
                     raise PluginError("Bilinmeyen arama kapsamı")
+                if args.get("semantic"):
+                    from pevrai import anlamsal
+                    rows = db.execute("SELECT r.data FROM records r WHERE r.kind='note' AND " + filters[scope]).fetchall()
+                    adaylar = []
+                    for r in rows:
+                        not_k = json.loads(r[0])
+                        birlesik = f"{not_k.get('title', '')}\n{' '.join(not_k.get('tags', []))}\n{not_k.get('body', '')}"
+                        adaylar.append({"not": not_k, "metin": birlesik})
+                    try:
+                        sirali = anlamsal.metinleri_sirala(args["query"], adaylar, metin_anahtari="metin", limit=500, esik=0.1)
+                    except ValueError as e:
+                        raise PluginError(str(e)) from e
+                    off, lim = args.get("offset", 0), args.get("limit", 50)
+                    secilen = [{**x["not"], "score": x["score"]} for x in sirali[off:off + lim]]
+                    return {"items": secilen, "total": len(sirali), "semantic": True}
+                words = re.findall(r"\w+", args["query"], re.UNICODE)
+                if not words:
+                    return {"items": [], "total": 0}
+                query = " AND ".join('"' + word + '"' for word in words)
                 base = "FROM note_search JOIN records r ON r.id=note_search.id WHERE r.kind='note' AND note_search MATCH ? AND " + filters[scope]
                 total = db.execute("SELECT count(*) " + base, (query,)).fetchone()[0]
                 rows = db.execute("SELECT r.data " + base + " ORDER BY rank LIMIT ? OFFSET ?", (query, args.get("limit", 50), args.get("offset", 0))).fetchall()

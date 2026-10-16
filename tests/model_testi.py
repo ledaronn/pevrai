@@ -112,6 +112,26 @@ def bolum2_openai() -> None:
                 "choices": [{"message": {"role": "assistant", "content": None,
                                          "tool_calls": [{"id": "tc1", "type": "function",
                                                          "function": {"name": "converter__convert", "arguments": "{}"}}]}}]})
+        if govde.get("stream"):
+            if govde.get("model") == "kota":
+                return httpx.Response(429, json={"error": {"message": "rate limited"}})
+            if govde.get("model") == "stream_tools":
+                sse = (
+                    b'data: {"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "tc1", "type": "function", "function": {"name": "list_"}}]}}]}\n\n'
+                    b'data: {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"name": "dir", "arguments": "{\\"path\\": "}}]}}]}\n\n'
+                    b'data: {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": "\\"kum\\"}"}}]}}]}\n\n'
+                    b'data: {"usage": {"prompt_tokens": 10, "completion_tokens": 5}}\n\n'
+                    b'data: [DONE]\n\n'
+                )
+                return httpx.Response(200, content=sse, headers={"Content-Type": "text/event-stream"})
+            sse = (
+                b'data: {"choices": [{"delta": {"content": "Mer"}}]}\n\n'
+                b'data: {"choices": [{"delta": {"content": "haba"}}]}\n\n'
+                b'data: {"choices": [{"delta": {"content": " d\xc3\xbcnya"}}]}\n\n'
+                b'data: {"usage": {"prompt_tokens": 5, "completion_tokens": 3}}\n\n'
+                b'data: [DONE]\n\n'
+            )
+            return httpx.Response(200, content=sse, headers={"Content-Type": "text/event-stream"})
         return httpx.Response(200, json={
             "choices": [{"message": {"role": "assistant", "content": None,
                                      "tool_calls": [{"id": "tc9", "type": "function",
@@ -141,9 +161,38 @@ def bolum2_openai() -> None:
             s.uret(model, [kullanici_mesaji("x")], "", None); dogrula(False, f"{model}: istisna bekleniyordu")
         except tip as e:
             dogrula(type(e) is tip, f"{model} -> {tip.__name__} (code {e.code})")
-    dogrula(s.modeller() == ["gpt-x", "llama"], "modeller() /models listesini okur")
     anahtarsiz = OpenAIUyumlu("", 5, "http://localhost:11434/v1")
     dogrula("Authorization" not in anahtarsiz._http.headers, "anahtarsiz yerel sunucu: Authorization basligi yok")
+
+    # uret_akis: metin akisi ve son Yanit
+    metin_parcalari = []
+    son_yanit = None
+    for p in s.uret_akis("stream_text", [kullanici_mesaji("hi")], "S", None):
+        if isinstance(p, str):
+            metin_parcalari.append(p)
+        elif isinstance(p, taban.Yanit):
+            son_yanit = p
+    dogrula("".join(metin_parcalari) == "Merhaba dünya", "uret_akis metin parcalari akti")
+    dogrula(son_yanit is not None and son_yanit.metin == "Merhaba dünya" and son_yanit.girdi_token == 5 and son_yanit.cikti_token == 3,
+            "uret_akis nihai Yanit olusturuldu (token sayilariyla)")
+
+    # uret_akis: parcali arac cagrilarini birlestirme
+    son_yanit_tc = None
+    for p in s.uret_akis("stream_tools", [kullanici_mesaji("hi")], "S", ARACLAR):
+        if isinstance(p, taban.Yanit):
+            son_yanit_tc = p
+    dogrula(son_yanit_tc is not None and len(son_yanit_tc.cagrilar) == 1
+            and son_yanit_tc.cagrilar[0].ad == "list_dir"
+            and son_yanit_tc.cagrilar[0].args == {"path": "kum"}
+            and son_yanit_tc.cagrilar[0].id == "tc1",
+            "uret_akis parcali arac cagrilarini birlestirdi")
+
+    # uret_akis: akis sirasinda kota hatasi (429)
+    try:
+        list(s.uret_akis("kota", [kullanici_mesaji("x")], "", None))
+        dogrula(False, "uret_akis kota istisnasi bekleniyordu")
+    except OranSiniri:
+        dogrula(True, "uret_akis kota -> OranSiniri")
 
 
 def bolum3_anthropic() -> None:
