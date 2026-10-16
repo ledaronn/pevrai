@@ -77,7 +77,9 @@ def ikon_kontrolu() -> None:
     """ag.js'in istedigi her ikon adi IKON tablosunda olmali: bilinmeyen ad
     hata vermez, SESSIZCE bos bir SVG cizer."""
     print("\n0) Ag alani ikonlari IKON tablosunda")
-    kod = (PAKET / "arayuz" / "index.html").read_text(encoding="utf-8")
+    arayuz = PAKET / "arayuz"
+    app_js = arayuz / "app.js"
+    kod = (app_js.read_text(encoding="utf-8") + "\n" + (arayuz / "index.html").read_text(encoding="utf-8")) if app_js.exists() else (arayuz / "index.html").read_text(encoding="utf-8")
     bas = kod.find("const IKON")
     tablo = set(re.findall(r"\b([a-z0-9]+):\[", kod[bas:kod.find("\n};", bas)]))
     js = (PAKET / "arayuz" / "ag.js").read_text(encoding="utf-8")

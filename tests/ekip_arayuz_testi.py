@@ -47,8 +47,9 @@ def ikon_kontrolu() -> None:
     """ekip.js'de ikon("ad") ile istenen her ad IKON tablosunda olmali: ikon()
     bilinmeyen adda hata vermez, BOS bir SVG cizer — ikon sessizce kaybolur."""
     import re
-    print("\n0) Ekip alani ikonlari IKON tablosunda")
-    kod = (PAKET / "arayuz" / "index.html").read_text(encoding="utf-8")
+    arayuz = PAKET / "arayuz"
+    app_js = arayuz / "app.js"
+    kod = (app_js.read_text(encoding="utf-8") + "\n" + (arayuz / "index.html").read_text(encoding="utf-8")) if app_js.exists() else (arayuz / "index.html").read_text(encoding="utf-8")
     bas = kod.find("const IKON")
     tablo = set(re.findall(r"\b([a-z0-9]+):\[", kod[bas:kod.find("\n};", bas)]))
     js = (PAKET / "arayuz" / "ekip.js").read_text(encoding="utf-8")
