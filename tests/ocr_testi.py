@@ -133,7 +133,9 @@ def main() -> int:
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-    print("\nSonuc: " + ("TUM TESTLER GECTI" if HATA == 0 else f"{HATA} test kaldi"))
+    import gc
+    gc.collect()
+    print("\nSonuc: " + ("TUM TESTLER GECTI" if HATA == 0 else f"{HATA} test kaldi"), flush=True)
     return 1 if HATA else 0
 
 

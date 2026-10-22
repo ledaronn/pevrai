@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-belge = ["pymupdf>=1.24.0", "python-docx>=1.1.0", "python-pptx>=0.6.23", "openpyxl>=3.1.0"]
+belge = ["pymupdf>=1.24.0,<2.0", "python-docx>=1.1.0", "python-pptx>=0.6.23", "openpyxl>=3.1.0"]
 tarayici = ["playwright>=1.40.0"]
 # Windows yerlesik OCR (Windows.Media.Ocr): ekran goruntusu, fotograf, taranmis PDF.
 # Model indirmez; dil paketleri Windows'tan gelir. Windows disinda kurulmaz/calismaz.
@@ -37,8 +37,8 @@ ocr = ["winrt-runtime>=3.0; sys_platform == 'win32'",
        "winrt-Windows.Graphics.Imaging>=3.0; sys_platform == 'win32'",
        "winrt-Windows.Media.Ocr>=3.0; sys_platform == 'win32'",
        "winrt-Windows.Storage.Streams>=3.0; sys_platform == 'win32'",
-       "Pillow>=10.0.0", "pymupdf>=1.24.0"]
-donusturucu = ["pymupdf>=1.24.0", "python-pptx>=0.6.23", "Pillow>=10.0.0"]
+       "Pillow>=10.0.0", "pymupdf>=1.24.0,<2.0"]
+donusturucu = ["pymupdf>=1.24.0,<2.0", "python-pptx>=0.6.23", "Pillow>=10.0.0"]
 donusturucu-gui = ["customtkinter>=5.2.0", "tkinterdnd2>=0.3.0", "Pillow>=10.0.0"]
 anthropic = ["anthropic>=0.40"]          # Anthropic Claude saglayicisi (pevrai/model/anthropic_.py)
 anahtar = ["keyring>=25"]                 # API anahtarini sistem deposunda sakla (yoksa ~/.vekil/credentials.json)

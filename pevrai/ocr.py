@@ -95,22 +95,35 @@ def _tani(img, dil: str) -> str:
         oran = AZAMI_KENAR / max(img.size)
         img = img.resize((max(1, int(img.width * oran)), max(1, int(img.height * oran))))
     yazici = DataWriter()
-    yazici.write_bytes(img.tobytes())
-    bitmap = SoftwareBitmap.create_copy_from_buffer(yazici.detach_buffer(), BitmapPixelFormat.RGBA8,
-                                                    img.width, img.height)
-    motor = OcrEngine.try_create_from_language(Language(dil))
-    if motor is None:
-        raise RuntimeError(f"OcrEngine({dil})")
+    bitmap = None
+    try:
+        yazici.write_bytes(img.tobytes())
+        tampon = yazici.detach_buffer()
+        bitmap = SoftwareBitmap.create_copy_from_buffer(tampon, BitmapPixelFormat.RGBA8,
+                                                        img.width, img.height)
+        motor = OcrEngine.try_create_from_language(Language(dil))
+        if motor is None:
+            raise RuntimeError(f"OcrEngine({dil})")
 
-    async def calistir():
-        return await motor.recognize_async(bitmap)
+        async def calistir():
+            return await motor.recognize_async(bitmap)
 
-    # Arac cagrisi ajan is parcaciginda kosar, orada olay dongusu yok;
-    # asyncio.run yeni bir dongu acar ve kapatir.
-    sonuc = asyncio.run(calistir())
-    # Satirlar: OCR'in kendi satir bolmesi korunur — tablo/liste yapisi
-    # modelin isine yarar, tek uzun dize yaramaz.
-    return "\n".join(satir.text for satir in sonuc.lines).strip()
+        # Arac cagrisi ajan is parcaciginda kosar, orada olay dongusu yok;
+        # asyncio.run yeni bir dongu acar ve kapatir.
+        sonuc = asyncio.run(calistir())
+        # Satirlar: OCR'in kendi satir bolmesi korunur — tablo/liste yapisi
+        # modelin isine yarar, tek uzun dize yaramaz.
+        return "\n".join(satir.text for satir in sonuc.lines).strip()
+    finally:
+        if bitmap is not None:
+            try:
+                bitmap.close()
+            except Exception:
+                pass
+        try:
+            yazici.close()
+        except Exception:
+            pass
 
 
 def goruntu_oku(yol: Path, dil: str | None = None) -> str:
