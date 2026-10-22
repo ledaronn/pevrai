@@ -12,6 +12,11 @@ from typing import Any
 from pevrai.ceviri import t
 from pevrai import journal
 from pevrai.baglam import B
+from pevrai.gate_kurallar import (
+    masaustu_yikici_mi,
+    terminal_komut_anahtari,
+    terminal_yikici_mi,
+)
 from pevrai.olaylar import OnayIstegi, Oturum, onay_iste
 from pevrai.araclar.ortak import args_gizle as _args_gizle
 
@@ -19,7 +24,8 @@ from pevrai.araclar.ortak import args_gizle as _args_gizle
 TOPLU_ONAY_YASAK = {"DESTRUCTIVE"}
 
 # Risk seviyesinden BAĞIMSIZ, ada göre toplu onaydan çıkarılan araçlar.
-TOPLU_ONAY_YASAK_ARAC = {"converter.convert"}
+# open_file: program/dosya başlatma her zaman tek tek sorulur, toplu onaya girmez.
+TOPLU_ONAY_YASAK_ARAC = {"converter.convert", "open_file"}
 
 # Fark gösteriminde azami satır (ARAYUZ.md 4.5).
 FARK_AZAMI_SATIR = 200
@@ -45,7 +51,12 @@ def _toplu_sunulabilir_mi(arac: str, risk: str, yikici: bool) -> bool:
 
 
 def _yikici_yazma_mi(arac: str, args: dict, yol: Path | None) -> bool:
-    """İçeriği yok eden write_file fiilen silmedir: toplu onayı atlar, ayrı sorulur."""
+    """İçeriği yok eden write_file, yıkıcı terminal komutu ve kritik pencere eylemleri
+    toplu onayı atlar, her seferinde ayrı sorulur."""
+    if arac == "terminal_run":
+        return terminal_yikici_mi(str(args.get("command", "")))
+    if arac in ("window_click", "window_type", "window_key"):
+        return masaustu_yikici_mi(arac, args)
     if arac != "write_file":
         return False
     hedef = yol or Path(args.get("path", ""))
@@ -111,6 +122,33 @@ def _etki_cumlesi(arac: str, args: dict, yol: Path | None) -> str:
         return t("'{ad}' ögesine tıklanacak", ad=args.get("name", "?"))
     if arac == "browser_fill":
         return t("'{ad}' alanına yazılacak", ad=args.get("name", "?"))
+    if arac == "terminal_run":
+        komut = str(args.get("command", "?")).strip()
+        klasor = str(yol) if yol else str(args.get("cwd", "?"))
+        if terminal_yikici_mi(komut):
+            return t("YIKICI KOMUT çalıştırılacak: {komut} (klasör: {klasor})",
+                     komut=komut[:120], klasor=klasor)
+        return t("komut çalıştırılacak: {komut} (klasör: {klasor})",
+                 komut=komut[:120], klasor=klasor)
+    if arac == "window_click":
+        pencere = str(args.get("window", "?"))
+        oge = str(args.get("name") or args.get("automation_id")
+                  or f"({args.get('x', '?')}, {args.get('y', '?')})")
+        return t("'{pencere}' penceresinde '{oge}' ögesine tıklanacak",
+                 pencere=pencere, oge=oge)
+    if arac == "window_type":
+        pencere = str(args.get("window", "?"))
+        alan = str(args.get("name") or args.get("automation_id") or t("odaklı alan"))
+        if bool(args.get("submit", False)):
+            return t("'{pencere}' penceresinde '{alan}' alanına yazılıp Enter basılacak",
+                     pencere=pencere, alan=alan)
+        return t("'{pencere}' penceresinde '{alan}' alanına metin yazılacak",
+                 pencere=pencere, alan=alan)
+    if arac == "window_key":
+        pencere = str(args.get("window", "?"))
+        tus = str(args.get("key") or args.get("keys") or "?")
+        return t("'{pencere}' penceresine '{tus}' tuşu gönderilecek",
+                 pencere=pencere, tus=tus)
     if arac.startswith("converter."):
         kaynak = Path(str(args.get("src", "?"))).name
         klasor = str(args.get("dst_dir", "?"))
@@ -158,6 +196,21 @@ def _onay_gerekli_mi(oturum: Oturum, arac: str, args: dict,
                      risk: str, yol: Path | None) -> bool:
     """Onay isteğini kurar; kararı olaylar.onay_iste verir."""
     yikici = _yikici_yazma_mi(arac, args, yol)
+
+    # Masaüstü pencere kontrolü: aynı oturumda kullanıcı bu açık pencereye
+    # bir kez izin verdiyse, yıkıcı olmayan (Sil/Gönder/Kaydet/Kapat/submit dışındaki)
+    # standart tıklama ve yazma adımları tekrar onay istemez.
+    if arac in ("window_click", "window_type", "window_key"):
+        pencere_adi = str(args.get("window", "")).strip()
+        if not yikici and pencere_adi and oturum.pencere_onayli(pencere_adi):
+            return True
+
+    # Terminal komutu: oturumda bu komut ön-eki onaylandıysa ve yıkıcı değilse geçer.
+    if arac == "terminal_run":
+        komut_anahtari = terminal_komut_anahtari(str(args.get("command", "")))
+        if not yikici and komut_anahtari and oturum.komut_onayli(komut_anahtari):
+            return True
+
     istek = OnayIstegi(
         arac=arac,
         args=_args_gizle(args),
@@ -172,4 +225,15 @@ def _onay_gerekli_mi(oturum: Oturum, arac: str, args: dict,
         supported = getattr(B.kopru, "geri_alinabilir", lambda _: False)(arac)
         note = t("Bu aracın dosya çıktıları yedeklenir ve geri alınabilir.") if supported else t("Bu dış aracın işlemleri Pevrai'nın geri alma kapsamına girmez.")
         istek = replace(istek, etki=istek.etki + " " + note)
-    return onay_iste(oturum, istek)
+    onaylandi = onay_iste(oturum, istek)
+    if onaylandi:
+        if arac in ("window_click", "window_type", "window_key"):
+            pencere_adi = str(args.get("window", "")).strip()
+            if pencere_adi:
+                oturum.pencere_onayla(pencere_adi)
+        elif arac == "terminal_run" and not yikici and oturum.toplu_onayli("terminal_run"):
+            komut_anahtari = terminal_komut_anahtari(str(args.get("command", "")))
+            if komut_anahtari:
+                oturum.komut_onayla(komut_anahtari)
+    return onaylandi
+

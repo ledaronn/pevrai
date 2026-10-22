@@ -885,6 +885,24 @@ tam adlarla ve 10'da kırpılarak dönüyor, tam adla ikinci çağrı yalnızca 
 uyarı, `doldur` da aynı yoldan geçip yazmıyor. **Canlı:** gerçek Wikipedia
 sayfasında "Bitki" → 17 aday, tıklanmadı; "Bitkilerde" → doğru sayfa.
 
+
+### Terminal ve kısmi masaüstü kontrolü savunma katmanları
+
+	erminal_run ve window_* araçları izin kapısına (gate_kurallar.py ve gate.py) dört katmanlı savunmayla bağlanmıştır:
+
+1. **Terminal 4 kademeli kapı (	erminal_karari):**
+   - Çalışma dizini (cwd) ve komuttaki yol argümanları Path.resolve() sonrasında izinli kökler içinde olmak zorundadır; Pevrai kod kökü ve kara liste kalıpları (.env, *.pem, id_rsa, policy.toml, credentials.json, .vekil) her zaman DENY alır.
+   - Kabuk zinciri/yönlendirmesi (|, >, <, &, ;, `  `, $() içermeyen salt-okunur komutlar ALLOW; yazan/zincirli komutlar ASK (oturumda komut anahtarı bazında); yıkıcı komutlar (
+m, del, Remove-Item, 	askkill, git reset --hard) kırmızı uyarı şeridiyle her seferinde tekil ASK; sistem/disk/dinamik kod komutları (ormat, diskpart, cdedit, 
+egedit, -EncodedCommand, Invoke-Expression) DENY alır.
+   - Alt sürece API_KEY/SECRET/TOKEN/PASSWORD ortam değişkenleri sızdırılmaz; çıktı <untrusted_content> içine sarılır; değişen dosyaların farkı (+/-) ve journal yedeği üretilir.
+2. **Masaüstü pencere kontrolü (masaustu_karari):**
+   - **Yalnızca açık pencereler:** window_list, window_read, window_click, window_type, window_key yalnızca o an açık olan pencereleri kontrol eder; kapalı bir programı asla kendi kendine başlatmaz (open_file her zaman tekil onay ister, TOPLU_ONAY_YASAK_ARAC içindedir).
+   - **Kara liste (DENY):** Pevrai penceresi, komut satırı/terminal pencereleri, parola yöneticileri, Görev Yöneticisi / Kayıt Defteri gibi sistem araçları, parola alanları ve ödeme/satın alma düğmeleri her zaman reddedilir.
+   - **İlk etkileşim ve kritik işlem onayı (ASK):** Açık pencereye ilk müdahale onay ister; kritik eylemler (Sil, Kaydet, Gönder, Kapat, Alt+F4, Ctrl+W, Delete, submit=True) onaylı pencerede bile her seferinde tekrar onay ister.
+
+**Kanıt:** python tests/terminal_masaustu_testi.py (81 kontrol: 1. terminal kapısı, 2. sır maskeleme + <untrusted_content> + dosya farkı tespiti, 3. masaüstü kara listesi + oturum/kritik onay + kapalı programı açmama + open_file toplu onay yasağı, 4. arayüz siyah terminal kartı ve akış regresyonu).
+
 ## Kill switch
 
 CLI'de `Ctrl-C`, çalışan görevi anında durdurur — `calistir()` çağrısı `KeyboardInterrupt`'a

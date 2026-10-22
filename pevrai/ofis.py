@@ -89,6 +89,10 @@ def masa_bul(arac: str, args=None, risk: str | None = None) -> str:
         return "ag"
     if arac.startswith("browser_"):
         return "web"
+    if arac == "terminal_run":
+        return "kod"
+    if arac.startswith("window_"):
+        return "diger"
     r = str(risk or "").upper()
     if r in _OKUMA_RISKI:
         return "arsiv"

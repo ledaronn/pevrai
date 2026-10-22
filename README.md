@@ -72,7 +72,7 @@ can be changed later in Settings.
   Other external MCP tools state their undo coverage in the confirmation card.
 - **Data is not instructions.** Web pages, documents and MCP output reach the model wrapped
   as untrusted content; the model is told to report, not obey, instructions found there.
-- **No shell, no code execution.** Deliberately. It can write a script; it cannot run one.
+- **Supervised terminal & open-window desktop control.** Read-only terminal inspection runs inside your workspace; write/install/destructive commands ask for confirmation and dangerous system commands are hard-blocked. Desktop window control interacts only with **already open** windows (never launches programs on its own) and blocks password managers and security dialogs.
 - **Single user, single machine.** Not a server, not multi-tenant.
 
 ## Download
@@ -168,7 +168,7 @@ For local troubleshooting, `python -m pevrai --tani-ayrintili` includes paths
 and error details. Inspect that output before sharing it; it may contain
 personal information or secrets embedded in errors.
 
-These diagnostic enhancements are included in Pevrai 0.1.2.
+These diagnostic enhancements are included in Pevrai 0.1.3.
 
 ## Tools and packages
 
@@ -179,6 +179,8 @@ Capabilities come in **packages**, shown in the Tools panel with plain-language 
 | Core reading | list folder, read file, search, change history | no — per-chat off only |
 | Document reading | PDF/DOCX/PPTX/XLSX/CSV text; images and scanned PDF pages via Windows OCR (`[ocr]` extra) | yes |
 | File editing | write, edit in place, new folder, move, rename, trash | yes |
+| Terminal (`terminal_run`) | supervised command execution inside workspace write roots with live black terminal output card and `+`/`-` file diffs; risky commands ask, dangerous commands blocked | yes |
+| Desktop control (`window_*`) | list, read, click, type and send keys to **already open** desktop windows via Windows UI Automation; never launches closed apps without confirmation | yes |
 | Open files & apps | opens items from **one folder you choose** (documents with their app, shortcuts with their target, programs); the agent cannot write to that folder; every launch asks | yes |
 | Browser | open, read, inspect, click, fill, download (allow-listed sites) | yes |
 | Team (left rail **Team**, or `/ekip`) | a live **3D office**: agents walk to the desk of the work they are really doing (code, files, library, meeting table), hire agents on your API connections, give the team or a single agent a task, replay past runs; falls back to cards without WebGL. Also **projects** (workspace folders), **agents** (own connection/model each), **history**. Agents split one task by **disjoint paths** in the same workspace; one approval for the split; each worker is a separate process with a narrowed policy; workers talk on a **board** the user can also write to; an integrator merges — [docs/EKIP.md](docs/EKIP.md) | define agents to enable |

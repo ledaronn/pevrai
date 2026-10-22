@@ -2435,7 +2435,70 @@ Object.assign(CEVIRI.en, {
   "Perşembe": "Thursday",
   "Cuma": "Friday",
   "Cumartesi": "Saturday",
-  "Pazar": "Sunday"
+  "Pazar": "Sunday",
+  "Terminal": "Terminal",
+  "İzinli klasörlerde terminal komutu çalıştırır ve yapılan dosya değişikliklerini gösterir. Salt okunur komutlar doğrudan, yazan ve riskli komutlar onayla çalışır.":
+    "Runs terminal commands in allowed folders and shows file changes. Read-only commands run directly; mutating and risky commands require approval.",
+  "Masaüstü kontrolü": "Desktop control",
+  "Yalnızca bilgisayarda zaten açık olan pencereleri listeler, okur ve onayla kontrol eder. Kendi kendine program açmaz; parola ve ödeme alanlarına dokunmaz.":
+    "Lists, reads, and controls only windows already open on the computer with approval. Never launches programs on its own; never touches password or payment fields.",
+  "Terminal komutu çalıştırma": "Run terminal command",
+  "İzinli klasörde terminal komutu çalıştırır ve yapılan değişiklikleri gösterir.":
+    "Runs a terminal command in an allowed folder and shows resulting file changes.",
+  "Açık pencereleri listeleme": "List open windows",
+  "Bilgisayarda şu an açık olan program pencerelerini listeler.":
+    "Lists program windows currently open on the computer.",
+  "Pencere içeriğini okuma": "Read window contents",
+  "Açık bir pencerenin metinlerini, butonlarını ve alanlarını okur.":
+    "Reads the text, buttons, and fields of an open window.",
+  "Pencerede tıklama": "Click in window",
+  "Açık bir penceredeki düğmeye veya ögeye tıklar.":
+    "Clicks a button or element inside an open window.",
+  "Pencereye metin yazma": "Type into window",
+  "Açık bir penceredeki metin alanına yazı yazar.":
+    "Types text into a text field in an open window.",
+  "Pencereye tuş gönderme": "Send key to window",
+  "Açık bir pencereye kısayol veya klavye tuşu gönderir.":
+    "Sends a shortcut or keyboard key to an open window.",
+  "Dosya/uygulama açıyor": "Opening file/app",
+  "Terminal komutu çalıştırıyor": "Running terminal command",
+  "Açık pencereleri listeliyor": "Listing open windows",
+  "Pencereyi okuyor": "Reading window",
+  "Pencerede tıklıyor": "Clicking in window",
+  "Pencereye yazıyor": "Typing in window",
+  "Pencereye tuş gönderiyor": "Sending key to window",
+  "Terminalde çalışıyor": "Working in terminal",
+  "Masaüstünde çalışıyor": "Working on desktop",
+  "çalışıyor…": "running…",
+  "onay bekleniyor…": "waiting for approval…",
+  "Onay bekleniyor…": "Waiting for approval…",
+  "Komut yürütülüyor…": "Executing command…",
+  "reddedildi": "denied",
+  "tamamlandı": "completed",
+  "iptal / hata": "cancelled / error",
+  "zaman aşımı": "timed out",
+  "durduruldu": "stopped",
+  "çıkış: {kod}": "exit: {kod}",
+  "(çıktı yok)": "(no output)",
+  "Yapılan dosya değişiklikleri ({n})": "File changes made ({n})",
+  "yeni dosya": "new file",
+  "silindi": "deleted",
+  "düzenlendi": "modified",
+  "'{ad}' ögesini açmak için onay gerekiyor.": "Approval is required to open '{ad}'.",
+  "Yıkıcı terminal komutu çalıştırmak için onay gerekiyor.":
+    "Approval is required to run a destructive terminal command.",
+  "Terminalde komut çalıştırmak için onay gerekiyor.":
+    "Approval is required to run a command in the terminal.",
+  "'{pencere}' penceresinde '{oge}' ögesine tıklayacağım.":
+    "I will click '{oge}' in window '{pencere}'.",
+  "'{pencere}' penceresine metin yazacağım.":
+    "I will type text into window '{pencere}'.",
+  "'{pencere}' penceresine '{tus}' tuşunu göndereceğim.":
+    "I will send key '{tus}' to window '{pencere}'.",
+  "Bu komut dosyaları silebilir veya geri alınamaz değişiklik yapabilir.":
+    "This command may delete files or make irreversible changes.",
+  "Bu pencere eylemi kritik bir işlem (Sil/Gönder/Kaydet/Kapat) tetikleyebilir.":
+    "This window action may trigger a critical operation (Delete/Submit/Save/Close)."
 });
 
 
@@ -2577,6 +2640,8 @@ function kisalt(m, n) { m = String(m); return m.length <= n ? m : m.slice(0, n) 
 
 function dipte() { return akis.scrollTop + akis.clientHeight >= akis.scrollHeight - 80; }
 
+function kaydir() { if (dipte()) akis.scrollTop = akis.scrollHeight; }
+
 function ekle(dugum) {
 
   const k = document.getElementById("karsilama");
@@ -2662,6 +2727,8 @@ const IKON = {
   web:["M12 2a10 10 0 100 20 10 10 0 000-20z","M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20","M2 12h20"],
 
   bilgisayar:["M4 3h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2z","M8 21h8","M12 17v4"],
+
+  terminal:["M4 17l6-6-6-6","M12 19h8"],
 
   fikir:["M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 006 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5","M9 18h6","M10 22h4"],
 
@@ -3791,6 +3858,14 @@ const ARAC_ADI = {
 
   edit_file:"Dosyayı düzenliyor", mkdir:"Klasör oluşturuyor",
 
+  open_file:"Dosya/uygulama açıyor", terminal_run:"Terminal komutu çalıştırıyor",
+
+  window_list:"Açık pencereleri listeliyor", window_read:"Pencereyi okuyor",
+
+  window_click:"Pencerede tıklıyor", window_type:"Pencereye yazıyor",
+
+  window_key:"Pencereye tuş gönderiyor",
+
   ekip_mesaj:"Panoya yazıyor", ekip_gelen:"Panoyu okuyor"
 
 };
@@ -3812,6 +3887,14 @@ function grupBasligi(araclar) {
   const dosya = araclar.some((a) => ["write_file","move","rename","trash","read_file",
 
                                      "read_document","list_dir","search"].indexOf(a) !== -1);
+
+  const term = araclar.some((a) => a === "terminal_run");
+
+  const masa = araclar.some((a) => a.indexOf("window_") === 0);
+
+  if (term && !web && !dosya && !masa) return t("Terminalde çalışıyor");
+
+  if (masa && !web && !dosya && !term) return t("Masaüstünde çalışıyor");
 
   if (web && !dosya) return t("Web'de çalışıyor");
 
@@ -4253,6 +4336,135 @@ function ekipMesaji(v) {
 
 
 
+let aktifTerminalKarti = null;
+
+function terminalKarti(v) {
+  const args = v.args || {};
+  const komut = String(args.command || "");
+  const cwd = String(args.cwd || "");
+  const onayBekliyor = v.karar === "ASK";
+  const tkart = el("div", "terminal-kart calisiyor");
+  const bas = el("div", "terminal-bas");
+  const sol = el("div", "terminal-sol");
+  sol.appendChild(ikon("terminal", 14));
+  sol.appendChild(el("span", "terminal-istem", "$"));
+  sol.appendChild(el("code", "terminal-komut", komut));
+  bas.appendChild(sol);
+
+  const sag = el("div", "terminal-sag");
+  if (cwd) {
+    const cwdDugum = el("span", "terminal-cwd", cwd.split(/[\\/]/).pop() || cwd);
+    cwdDugum.title = cwd;
+    sag.appendChild(cwdDugum);
+  }
+  const durum = el("span", "terminal-durum", onayBekliyor ? t("onay bekleniyor…") : t("çalışıyor…"));
+  sag.appendChild(durum);
+  sag.appendChild(kopyaDugmesi(() => tkart._cikti.textContent || komut, t("Kopyala")));
+  bas.appendChild(sag);
+  tkart.appendChild(bas);
+
+  const cikti = el("pre", "terminal-cikti", "");
+  cikti.dataset.bekliyor = onayBekliyor ? t("Onay bekleniyor…") : t("Komut yürütülüyor…");
+  tkart.appendChild(cikti);
+
+  const degisiklikler = el("div", "terminal-degisiklikler");
+  degisiklikler.hidden = true;
+  tkart.appendChild(degisiklikler);
+
+  tkart._cikti = cikti;
+  tkart._durum = durum;
+  tkart._degisiklikler = degisiklikler;
+  tkart._canliSatir = false;
+  aktifTerminalKarti = tkart;
+  ekle(tkart);
+  return tkart;
+}
+
+function terminalCiktiEkle(v) {
+  if (!aktifTerminalKarti || !aktifTerminalKarti._cikti) return;
+  const satir = String(v.metin || "");
+  if (!satir) return;
+  aktifTerminalKarti._canliSatir = true;
+  const pre = aktifTerminalKarti._cikti;
+  const yeniMetin = (pre.textContent ? pre.textContent + "\n" : "") + (v.akis === "stderr" ? "[stderr] " + satir : satir);
+  pre.textContent = yeniMetin.length > 16000 ? "…\n" + yeniMetin.slice(-16000) : yeniMetin;
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function terminalFarkKutusu(farkMetni) {
+  const farkKutu = el("div", "fark");
+  String(farkMetni || "").split("\n").forEach((s) => {
+    let sinif = "";
+    if (s.charAt(0) === "+" && s.slice(0, 3) !== "+++") sinif = "ekle";
+    else if (s.charAt(0) === "-" && s.slice(0, 3) !== "---") sinif = "sil";
+    else if (s.slice(0, 2) === "@@") sinif = "konum";
+    else if (s.slice(0, 3) === "+++" || s.slice(0, 3) === "---") sinif = "bas";
+    farkKutu.appendChild(el("div", sinif, s || " "));
+  });
+  return farkKutu;
+}
+
+function terminalSonucu(tkart, v, basarili) {
+  if (!tkart) return;
+  tkart.classList.remove("calisiyor");
+  const term = (v.ek && v.ek.terminal) || null;
+  if (!term) {
+    tkart.classList.add(basarili ? "basarili" : "hata");
+    tkart._durum.textContent = v.karar === "DENY" ? t("reddedildi") : (basarili ? t("tamamlandı") : t("iptal / hata"));
+    if (!tkart._cikti.textContent) {
+      tkart._cikti.textContent = String(v.sonuc || "");
+    }
+    if (aktifTerminalKarti === tkart) aktifTerminalKarti = null;
+    return;
+  }
+
+  const tamam = term.cikis_kodu === 0 && !term.zaman_asimi && !term.durduruldu;
+  tkart.classList.add(tamam ? "basarili" : "hata");
+  const sure = sureMetni(term.sure_sn !== undefined ? term.sure_sn : v.sure_sn);
+  const durumMetin = term.zaman_asimi
+    ? t("zaman aşımı")
+    : (term.durduruldu ? t("durduruldu") : t("çıkış: {kod}", {kod: term.cikis_kodu}));
+  tkart._durum.textContent = durumMetin + (sure ? " · " + sure : "");
+
+  const parcalar = [];
+  if (term.stdout) parcalar.push(String(term.stdout).replace(/\n$/, ""));
+  if (term.stderr) parcalar.push("[stderr]\n" + String(term.stderr).replace(/\n$/, ""));
+  tkart._cikti.textContent = parcalar.length ? parcalar.join("\n\n") : t("(çıktı yok)");
+
+  const degisiklikListesi = term.degisiklikler || [];
+  if (degisiklikListesi.length) {
+    bosalt(tkart._degisiklikler);
+    tkart._degisiklikler.hidden = false;
+    const det = el("details", "terminal-farklar");
+    det.open = true;
+    const sum = el("summary", "terminal-fark-baslik");
+    sum.appendChild(ikon("degisiklik", 13));
+    sum.appendChild(el("span", "", t("Yapılan dosya değişiklikleri ({n})", {n: degisiklikListesi.length})));
+    det.appendChild(sum);
+
+    const liste = el("div", "terminal-fark-liste");
+    degisiklikListesi.forEach((d) => {
+      const kutu = el("div", "terminal-dosya-fark");
+      const ust = el("div", "terminal-dosya-ust");
+      ust.appendChild(yolDugumu(String(d.yol || d.goreli || ""), ""));
+      const turEtiket = d.tur === "eklendi" ? t("yeni dosya") : (d.tur === "silindi" ? t("silindi") : t("düzenlendi"));
+      ust.appendChild(el("span", "terminal-dosya-tur " + (d.tur || ""), turEtiket));
+      const sayac = el("span", "terminal-dosya-sayac");
+      if (d.arti) sayac.appendChild(el("span", "arti", "+" + d.arti));
+      if (d.eksi) sayac.appendChild(el("span", "eksi", "-" + d.eksi));
+      ust.appendChild(sayac);
+      kutu.appendChild(ust);
+      if (d.fark) {
+        kutu.appendChild(terminalFarkKutusu(d.fark));
+      }
+      liste.appendChild(kutu);
+    });
+    det.appendChild(liste);
+    tkart._degisiklikler.appendChild(det);
+  }
+  if (aktifTerminalKarti === tkart) aktifTerminalKarti = null;
+}
+
 function aracCagrildi(v) {
 
   const kart = etkinlikKartiAl();
@@ -4269,11 +4481,17 @@ function aracCagrildi(v) {
 
   adim.appendChild(im); adim._im = im;
 
-  const belirgin = v.args && (v.args.path || v.args.url || v.args.query || v.args.name || v.args.src);
+  const komutMu = v.arac === "terminal_run" && v.args && v.args.command;
+
+  const belirgin = v.args && (v.args.path || v.args.url || v.args.query || v.args.command || v.args.window || v.args.name || v.args.src);
+
+  const belirginMetin = komutMu
+    ? "$ " + kisalt(String(v.args.command).replace(/\s+/g, " ").trim(), 54)
+    : (belirgin ? kisalt(String(belirgin).split(/[\\/]/).pop(), 46) : "");
 
   adim.appendChild(el("span", "", (v.ajan ? "[" + v.ajan + "] " : "") + aracBasligi(v.arac) +
 
-                      (belirgin ? " — " + kisalt(String(belirgin).split(/[\\/]/).pop(), 46) : "")));
+                      (belirginMetin ? " — " + belirginMetin : "")));
 
   adim.appendChild(el("span", "sure", ""));
 
@@ -4302,6 +4520,12 @@ function aracCagrildi(v) {
 
 
   kart._sonAdim = adim; kart._sonTeknik = tic;
+
+  if (v.arac === "terminal_run") {
+    kart._sonTerminal = terminalKarti(v);
+  } else {
+    kart._sonTerminal = null;
+  }
 
   return kart;
 
@@ -4336,6 +4560,11 @@ function aracSonucu(v) {
   kart._sure += (v.sure_sn || 0);
 
   etkinlikOzetle(kart);
+
+  if (v.arac === "terminal_run" && (kart._sonTerminal || aktifTerminalKarti)) {
+    terminalSonucu(kart._sonTerminal || aktifTerminalKarti, v, basarili);
+    kart._sonTerminal = null;
+  }
 
 
 
@@ -4395,6 +4624,20 @@ function onayCumlesi(istek) {
 
   if (a === "move") return t("{ad} dosyasını başka bir klasöre taşıyacağım.", {ad});
 
+  if (a === "open_file") return t("'{ad}' ögesini açmak için onay gerekiyor.", {ad});
+
+  if (a === "terminal_run") return istek.yikici
+    ? t("Yıkıcı terminal komutu çalıştırmak için onay gerekiyor.")
+    : t("Terminalde komut çalıştırmak için onay gerekiyor.");
+
+  if (a === "window_click") return t("'{pencere}' penceresinde '{oge}' ögesine tıklayacağım.",
+    {pencere: args.window || "", oge: args.name || args.automation_id || ""});
+
+  if (a === "window_type") return t("'{pencere}' penceresine metin yazacağım.", {pencere: args.window || ""});
+
+  if (a === "window_key") return t("'{pencere}' penceresine '{tus}' tuşunu göndereceğim.",
+    {pencere: args.window || "", tus: args.keys || ""});
+
   if (a === "browser_download") return t("Bu dosyayı internetten indireceğim.");
 
   if (a === "browser_click") return t("'{ad}' ögesine tıklayacağım.", {ad: args.name || ""});
@@ -4433,7 +4676,13 @@ function onayKarti(istek) {
 
     u.appendChild(ikon("uyari", 16));
 
-    u.appendChild(el("span", "", t("Bu yazma dosyanın içeriğini yok ediyor.")));
+    const uyariMetin = istek.arac === "terminal_run"
+      ? t("Bu komut dosyaları silebilir veya geri alınamaz değişiklik yapabilir.")
+      : (istek.arac.indexOf("window_") === 0
+          ? t("Bu pencere eylemi kritik bir işlem (Sil/Gönder/Kaydet/Kapat) tetikleyebilir.")
+          : t("Bu yazma dosyanın içeriğini yok ediyor."));
+
+    u.appendChild(el("span", "", uyariMetin));
 
     kart.appendChild(u);
 
@@ -4446,6 +4695,19 @@ function onayKarti(istek) {
   const hedef = istek.args && (istek.args.url || istek.args.path || istek.args.src);
 
   if (hedef) { const h = el("div", "hedef"); h.appendChild(yolDugumu(String(hedef), "")); kart.appendChild(h); }
+
+  if (istek.arac === "terminal_run" && istek.args) {
+    const h = el("div", "hedef");
+    h.appendChild(el("code", "satirici", "$ " + String(istek.args.command || "")));
+    if (istek.args.cwd) {
+      h.appendChild(document.createTextNode("  ("));
+      h.appendChild(yolDugumu(String(istek.args.cwd), ""));
+      h.appendChild(document.createTextNode(")"));
+    }
+    kart.appendChild(h);
+  } else if (istek.arac.indexOf("window_") === 0 && istek.etki) {
+    kart.appendChild(el("div", "hedef", istek.etki));
+  }
 
   if (istek.fark_ozeti) kart.appendChild(el("div", "hedef", t("Değişiklik: {f}", {f: istek.fark_ozeti})));
 
@@ -4819,11 +5081,11 @@ function sohbetMetni(olaylar, baslik) {
 
     if (o.tip === "gorev_basladi") s.push("## " + v.gorev, "");
 
-    else if (o.tip === "yanit_parcasi") s.push(v.metin, "");
+    else if (o.tip === "yanit_parcasi" && !v.akis) s.push(v.metin, "");
 
     else if (o.tip === "arac_cagrildi") s.push("- `" + v.arac + "` " +
 
-      (v.args && (v.args.path || v.args.url) ? String(v.args.path || v.args.url) : ""));
+      (v.args && (v.args.path || v.args.url || v.args.command) ? String(v.args.path || v.args.url || v.args.command) : ""));
 
     else if (o.tip === "onay_sonucu") s.push("- onay: " + v.arac + " -> " + v.cevap);
 
@@ -4991,7 +5253,7 @@ function akisiTemizle() {
 
   bosalt(kolon);
 
-  bekleyenOnay = null; etkinlikKarti = null; aktifAkis = null;
+  bekleyenOnay = null; etkinlikKarti = null; aktifAkis = null; aktifTerminalKarti = null;
 
   karsilamaKur();
 
@@ -5003,11 +5265,16 @@ function akisiKur(olaylar) {
 
   bosalt(kolon); akis.classList.remove("bos");
 
-  bekleyenOnay = null; etkinlikKarti = null; aktifAkis = null;
+  bekleyenOnay = null; etkinlikKarti = null; aktifAkis = null; aktifTerminalKarti = null;
 
   oynatma = true;
 
-  try { (olaylar || []).forEach(olayIsle); } finally { oynatma = false; }
+  try {
+    (olaylar || []).forEach((o) => {
+      try { olayIsle(o); } catch (err) { console.error(err); }
+    });
+    if (aktifAkis) akisKapat();
+  } finally { oynatma = false; }
 
   if (!kolon.firstChild) karsilamaKur();
 
@@ -5895,6 +6162,10 @@ function olayIsle(olay) {
 
     case "gorev_basladi":
 
+      if (aktifAkis) akisKapat();
+
+      aktifTerminalKarti = null;
+
       sonOlcum={};olcumCiz();
 
       etkinligiBitir(false);              // onceki gorevden sabit kart kalmasin
@@ -5911,7 +6182,7 @@ function olayIsle(olay) {
 
     case "bekleme": if(!oynatma)toast(t("Model yanıtı bekleniyor; {sn} sn sonra tekrar denenecek.",{sn:v.sn}));break;
 
-    case "arac_cagrildi": dusunuyorKapat(); aracCagrildi(v); break;
+    case "arac_cagrildi": if (aktifAkis) akisKapat(); dusunuyorKapat(); aracCagrildi(v); break;
 
     case "arac_sonucu": aracSonucu(v); break;
 
@@ -5919,47 +6190,39 @@ function olayIsle(olay) {
 
     case "model_gecis": modelGecisi(v); break;
 
-    case "onay_gerekli": onayKarti(v.istek); break;
+    case "onay_gerekli": if (aktifAkis) akisKapat(); onayKarti(v.istek); break;
 
-    case "onay_sonucu": if (bekleyenOnay) cevapla(bekleyenOnay, v.cevap); break;
+    case "onay_sonucu":
+      if (bekleyenOnay) cevapla(bekleyenOnay, v.cevap);
+      if (v.cevap !== "red" && aktifTerminalKarti && aktifTerminalKarti._durum) {
+        aktifTerminalKarti._durum.textContent = t("çalışıyor…");
+        if (aktifTerminalKarti._cikti) aktifTerminalKarti._cikti.dataset.bekliyor = t("Komut yürütülüyor…");
+      }
+      break;
 
     case "tarayici": if (!oynatma) tarayiciKare(v); break;
+
+    case "terminal_cikti": if (!oynatma) terminalCiktiEkle(v); break;
 
     case "yanit_parcasi":
 
       etkinligiBitir(false);
 
-      if (oynatma) {
-
-        gecmisYanitMesaji(v.metin);
-
-      } else if (v.akis === true) {
+      if (v.akis === true) {
 
         akisParcasiEkle(v.metin);
 
-      } else if (v.bitti === true) {
+      } else if (aktifAkis) {
 
-        if (aktifAkis) {
+        akisKapat(v.metin);
 
-          akisKapat(v.metin);
+      } else if (oynatma) {
 
-        } else {
-
-          yanitMesaji(v.metin);
-
-        }
+        gecmisYanitMesaji(v.metin);
 
       } else {
 
-        if (aktifAkis) {
-
-          akisKapat(v.metin);
-
-        } else {
-
-          yanitMesaji(v.metin);
-
-        }
+        yanitMesaji(v.metin);
 
       }
 
@@ -5982,6 +6245,8 @@ function olayIsle(olay) {
       break;
 
     case "hata":
+
+      if (aktifAkis) akisKapat();
 
       dusunuyorKapat(); etkinligiBitir(true);
 
@@ -9485,11 +9750,17 @@ async function yokla() {
 
     }
 
-    (d.olaylar || []).forEach(olayIsle);
+    (d.olaylar || []).forEach((o) => {
+      try { olayIsle(o); } catch (err) { console.error(err); }
+    });
     guncellemeBildirimi(d.guncelleme);
 
 
-    if (calisiyor !== !!d.calisiyor) { calisiyor = !!d.calisiyor;if(!calisiyor)durduruluyor=false;gonderDurumu(); }
+    if (calisiyor !== !!d.calisiyor) {
+      calisiyor = !!d.calisiyor;
+      if (!calisiyor) { durduruluyor = false; if (aktifAkis) akisKapat(); }
+      gonderDurumu();
+    }
 
     if(d.sohbet_id)window.LocalPlugins?.chatContext(d.proje_baglami||null,d.sohbet_id);
 

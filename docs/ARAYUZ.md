@@ -174,6 +174,19 @@ bölgeler `⋯ 42 satır` şeklinde katlanır.
 
 Bu, onayı anlamlı kılan tek şey. Terminalde ilk 200 karakter görünüyordu; bu yetersizdi.
 
+### 4.6 Siyah terminal kartı (`.terminal-kart`)
+`terminal_run` aracı çağrıldığında sohbet akışına Claude Code tarzı koyu zeminli (`#0d1016` / `#161b24`)
+bir terminal kartı eklenir:
+- **Üst çubuk (`.terminal-bas`):** Terminal ikonu, `$ <komut>` satırı, çalışma dizini rozeti (`.terminal-cwd`),
+  durum rozeti (`onay bekleniyor…`, `çalışıyor…`, `çıkış: 0 · 0.4 sn` veya `zaman aşımı`) ve çıktıyı/komutu
+  panoya kopyalama düğmesi.
+- **Canlı çıktı alanı (`pre.terminal-cikti`):** Süreç çalışırken `terminal_cikti` olaylarıyla gelen
+  `stdout` ve `[stderr]` satırları anlık olarak akar; tamamlandığında nihai çıktı gösterilir.
+- **Yapılan dosya değişiklikleri (`.terminal-degisiklikler`):** Komut çalışma dizininde dosya oluşturduysa,
+  düzenlediyse veya sildiyse kartın altında açılır bir bölümde dosya yolu (Explorer'da tıklanabilir),
+  işlem türü (`yeni dosya`, `düzenlendi`, `silindi`), `+eklenen / -silinen` satır sayaçları ve
+  renkli birleşik fark (`+/-` diff) kutusu doğrudan gösterilir.
+
 ---
 
 ## 5. Girdi alanı
@@ -381,8 +394,7 @@ adrese götürebilirdi.
 
 ## 10. Kabul kriterleri
 
-- [ ] Kullanıcı, ajanın ne yaptığını arayüze bakarak anlıyor (kenar çubuğu ve sohbet
-      geçmişi gelmeden tam değerlendirilemez)
+- [x] Kullanıcı, ajanın ne yaptığını arayüze bakarak anlıyor (kenar çubuğu, sohbet geçmişi, etkinlik kartı ve canlı siyah terminal kartı tamamlandı)
 - [x] Çalışan bir görev tek tıkla, veri bırakmadan durdurulabiliyor
 - [x] Onay kartı satır içi açılıyor, `DESTRUCTIVE` işlemlerde "Tümü" görünmüyor
 - [x] Üzerine yazma onayında fark görüntülenebiliyor
@@ -390,7 +402,7 @@ adrese götürebilirdi.
 - [x] Araç çıktısındaki HTML/script arayüzde çalışmıyor (kaçışlama testi)
 - [x] Sürükle-bırak ve düğmeyle dosya yükleme çalışıyor (surukle_destegi + dosya_sec tamamlandı)
 - [x] Bağlam doluluk barı canlı güncelleniyor
-- [ ] Maliyet sayacı canlı güncelleniyor (henüz yapılmadı; bağlam barı çalışıyor)
+- [x] Maliyet ve token sayacı canlı güncelleniyor (#canli-sayac ile girdi/çıktı token ve tahmini maliyet gösterimi tamamlandı)
 - [x] CLI hâlâ çalışıyor, `evals.py` kırılmadı
 - [x] Logo animasyonu ajanın durumunu doğru yansıtıyor
 

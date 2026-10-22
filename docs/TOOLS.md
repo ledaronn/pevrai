@@ -156,6 +156,36 @@ ilkesi korunur.
 | `browser_fill(role, name, text)` | WRITE | Parola alanına yazmaz (kod seviyesinde reddedilir, model isterse de). Kart/TC kimlik numarası kalıbı içeren metni reddeder |
 | `browser_download(role, name)` | DESTRUCTIVE | Sadece uzantı beyaz listesindeki dosyalar iner (`indirilebilir_uzantilar`), çalıştırılabilir dosyalar reddedilir. Ara klasöre (`~/.vekil/indirilen/`) iner, kalıcı yer değil |
 
+### Terminal (`araclar/terminal.py`) — paket `terminal`, kaldırılabilir
+
+| Araç | Risk | Not |
+|---|---|---|
+| `terminal_run(command, cwd?, timeout?)` | WRITE | İzinli klasörlerde PowerShell komutu çalıştırır, canlı çıktı (`TERMINAL_CIKTI`) yayınlar ve çalışma öncesi/sonrası dosya anlık görüntüsüyle yapılan dosya değişikliklerini (`+/-` diff) ve `journal` yedeklerini üretir |
+
+**Güvenlik ve onay kuralları (`gate_kurallar.py`, `tests/terminal_masaustu_testi.py`):**
+1. **Klasör sınırı:** `cwd` ve komuttaki yol benzeri argümanlar `Path.resolve()` sonrasında izinli kökler (`okuma_koklari` / `yazma_koklari`) içinde olmak zorundadır; Pevrai'nın kendi kod kökü ve kara liste kalıpları (`.env`, `*.pem`, `id_rsa`, `policy.toml`, `credentials.json`, `.vekil` vb.) her zaman `DENY` alır.
+2. **Dört kademeli komut ayrımı:**
+   - **Salt-okunur (`ALLOW`):** Kabuk zincirleme/yönlendirme (`|`, `>`, `<`, `&`, `;`, `` ` ``, `$(`) içermeyen güvenli sorgu komutları (`dir`, `ls`, `pwd`, `echo`, `type`, `cat`, `get-content`, `select-string`, `whoami`, `hostname`, `date`, `get-date`, `time`, `git status/diff/log/show/branch`) doğrudan çalışır.
+   - **Standart/yazan komutlar (`ASK`):** `python`, `pytest`, `npm`, `pip` veya dosya değiştiren/zincirli komutlar onay ister; onaylandığında aynı oturumda aynı komut anahtarı için tekrar sormaz.
+   - **Yıkıcı komutlar (`ASK`, toplu onay kapalı):** `rm`, `del`, `remove-item`, `taskkill`, `stop-process`, `git reset --hard`, `git clean`, `git push --force` gibi komutlar onay kartında kırmızı uyarı şeridi gösterir ve her seferinde tek tek onay ister.
+   - **Kesin yasak (`DENY`):** `format`, `diskpart`, `bcdedit`, `regedit`, `shutdown`, `icacls`, `takeown`, `-EncodedCommand`, `Invoke-Expression` (`iex`), `DownloadString` gibi sistem/disk/dinamik yürütme komutları kapıda reddedilir.
+3. **Sır yalıtımı ve çıktı sarmalama:** Alt sürece `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD` içeren ortam değişkenleri aktarılmaz; `stdout`/`stderr` çıktıları `<untrusted_content>` içine sarılır.
+
+### Masaüstü kontrolü (`araclar/masaustu.py`) — paket `masaustu`, kaldırılabilir
+
+| Araç | Risk | Not |
+|---|---|---|
+| `window_list()` | READ | Bilgisayarda şu an açık ve görünür olan üst düzey uygulama pencerelerini listeler |
+| `window_read(window)` | READ | Açık bir pencerenin Windows UI Automation erişilebilirlik ağacını (butonlar, metin alanları, yazılar) okur; `<untrusted_content>` ile sarılı döner |
+| `window_click(window, name, role?, index?)` | WRITE_HAFIF | Açık bir penceredeki düğmeye veya ögeye erişilebilirlik adıyla (`InvokePattern` / `SelectionItemPattern` / `TogglePattern` / merkez tıklama) tıklar |
+| `window_type(window, text, name?, clear?, submit?)` | WRITE_HAFIF | Açık bir penceredeki metin alanına yazı yazar (`ValuePattern` veya odak + pano yapıştırma) |
+| `window_key(window, keys)` | WRITE_HAFIF | Açık bir pencereye klavye tuşu veya kısayol (`Enter`, `Esc`, `Ctrl+S` vb.) gönderir |
+
+**Güvenlik ve onay kuralları (`gate_kurallar.py`, `tests/terminal_masaustu_testi.py`):**
+1. **Yalnızca açık pencereler — kapalı programı ASLA kendi kendine açmaz:** Hedef pencere o an masaüstünde açık değilse `window_*` araçları hiçbir süreç başlatmaz ve açık pencerelerin listesiyle birlikte hata döndürür. Kapalı bir programı açmak yalnızca `open_file` aracıyla ve her seferinde kullanıcı onayıyla (`TOPLU_ONAY_YASAK_ARAC`) yapılabilir.
+2. **Pencere ve alan kara listesi (`DENY`):** Pevrai'nın kendi penceresi, komut satırı/terminal pencereleri (`powershell`, `cmd.exe`, `wt.exe`), parola yöneticileri (`Bitwarden`, `1Password`, `KeePass`), sistem/kayıt defteri araçları (`Görev Yöneticisi`, `Task Manager`, `regedit`, `mmc`), parola alanları (`IsPassword` veya parola/şifre/PIN etiketli alanlar) ve ödeme/satın alma düğmeleri (`Satın Al`, `Öde`, `Checkout`, `Pay`) her zaman reddedilir.
+3. **Oturum ve kritik işlem onayı (`ASK`):** Açık bir pencereye ilk müdahalede kullanıcıdan onay istenir; onay verildiğinde aynı pencerede standart tıklama/yazma adımları sürer. Ancak kritik eylemler (`Sil`, `Kaydet`, `Gönder`, `Kapat`, `Alt+F4`, `Ctrl+W`, `Delete`, `Ctrl+S`, `submit=True`) onaylı pencerede bile her seferinde tekil onay ister.
+
 ### Dönüştürücü (`converter`) — MCP sunucusu, `Donusturucu/server.py`
 
 | Araç | Risk | Not |
@@ -205,8 +235,9 @@ bağlanıp araçları sınıflandırmayı unutursa bu test onu yakalar.
 
 Araçlar arayüzde **paket** halinde sunulur (`pevrai/paketler.py`): `cekirdek`
 (list_dir, read_file, search, degisiklik_gecmisi), `belge` (read_document),
-`dosya_duzenleme` (write_file, edit_file, mkdir, move, rename, trash), `acma` (open_file), `tarayici` (browser_*) ve her
-MCP sunucusu kendi paketi (`mcp:<ad>`). Her aracın insan dilinde adı ve açıklaması
+`dosya_duzenleme` (write_file, edit_file, mkdir, move, rename, trash), `acma` (open_file),
+`tarayici` (browser_*), `terminal` (terminal_run), `masaustu` (window_list, window_read,
+window_click, window_type, window_key) ve her MCP sunucusu kendi paketi (`mcp:<ad>`). Her aracın insan dilinde adı ve açıklaması
 `paketler.ARAC_BILGI`'de; teknik ad panelde açıklama satırında görünür.
 
 | İşlem | Nereye yazar | Etkisi |

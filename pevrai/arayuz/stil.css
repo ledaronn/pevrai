@@ -2187,4 +2187,145 @@ button.ag-mini.engel { color:var(--deny); border-color:var(--deny); }
 .zamanli-satir-metin { font-size:12.5px; color:var(--ikincil); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .zamanli-satir-zaman { font-size:11px; color:var(--sonuk); }
 .zamanli-satir-eylemler { display:flex; gap:6px; flex:none; }
+
+/* ---------------- Claude Code-tarzi siyah terminal karti ---------------- */
+.terminal-kart {
+  background: #0d1016;
+  border: 1px solid #262b36;
+  border-radius: 12px;
+  margin: var(--b3) 0;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono);
+}
+.terminal-kart.calisiyor { border-color: #3b4458; }
+.terminal-kart.basarili { border-color: rgba(88, 179, 124, 0.36); }
+.terminal-kart.hata { border-color: rgba(217, 102, 102, 0.48); }
+.terminal-bas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #141922;
+  border-bottom: 1px solid #232834;
+  flex-wrap: wrap;
+}
+.terminal-sol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  color: #e6edf3;
+}
+.terminal-sol svg { color: #7ee787; flex: none; }
+.terminal-istem { color: #7ee787; font-weight: 700; user-select: none; }
+.terminal-komut {
+  font: 600 12.5px/1.4 var(--mono);
+  color: #f0f6fc;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+.terminal-sag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.terminal-cwd {
+  font: 11.5px var(--mono);
+  color: #8b949e;
+  background: #1c2230;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.terminal-durum {
+  font: 500 11.5px var(--mono);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #1f2633;
+  color: #c9d1d9;
+}
+.terminal-kart.basarili .terminal-durum {
+  background: rgba(63, 185, 80, 0.16);
+  color: #7ee787;
+}
+.terminal-kart.hata .terminal-durum {
+  background: rgba(248, 81, 73, 0.18);
+  color: #ff7b72;
+}
+.terminal-cikti {
+  margin: 0;
+  padding: 12px 14px;
+  min-height: 40px;
+  max-height: 320px;
+  overflow: auto;
+  font: 12.5px/1.55 var(--mono);
+  color: #d0d7de;
+  background: #0d1016;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.terminal-cikti:empty::before {
+  content: attr(data-bekliyor);
+  color: #6e7681;
+  font-style: italic;
+}
+.terminal-degisiklikler {
+  border-top: 1px solid #232834;
+  background: #11151d;
+  padding: 8px 12px;
+}
+.terminal-fark-baslik {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font: 600 12px var(--sans);
+  color: #c9d1d9;
+  user-select: none;
+  padding: 2px 0;
+}
+.terminal-fark-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.terminal-dosya-fark {
+  border: 1px solid #262c38;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0d1016;
+}
+.terminal-dosya-ust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #161b24;
+  border-bottom: 1px solid #232834;
+  font: 12px var(--mono);
+}
+.terminal-dosya-tur {
+  font: 500 11px var(--sans);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #21262d;
+  color: #8b949e;
+}
+.terminal-dosya-tur.eklendi { color: #7ee787; background: rgba(63, 185, 80, 0.14); }
+.terminal-dosya-tur.silindi { color: #ff7b72; background: rgba(248, 81, 73, 0.14); }
+.terminal-dosya-tur.duzenlendi { color: #d2a8ff; background: rgba(163, 113, 247, 0.14); }
+.terminal-dosya-sayac {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  font: 600 11.5px var(--mono);
+}
+.terminal-dosya-sayac .arti { color: #7ee787; }
+.terminal-dosya-sayac .eksi { color: #ff7b72; }
 

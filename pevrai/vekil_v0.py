@@ -39,8 +39,11 @@ from pevrai.durum import (_durum_dosyasi_yaz, _durum_kalanlar, _sure_metni, ozet
 from pevrai.araclar.dosya import (list_dir, read_file, search, degisiklik_gecmisi,   # noqa: F401
                                   read_document, write_file, move, rename, trash, edit_file, mkdir)
 from pevrai.araclar.acma import open_file  # noqa: F401
+from pevrai.araclar.masaustu import (window_list, window_read, window_click,  # noqa: F401
+                                     window_type, window_key)
 from pevrai.araclar.tarayici_araclari import (browser_open, browser_read, browser_snapshot,  # noqa: F401
                                               browser_click, browser_fill, browser_download)
+from pevrai.araclar.terminal import terminal_run  # noqa: F401
 from pevrai.araclar.ortak import (MAX_OUTPUT, MAX_SATIR, kirp as _kirp, bulunamadi as _bulunamadi,  # noqa: F401
                                   journal_yaz as _journal_yaz, hassas_mi as _hassas_mi,
                                   hassas_maskele as _hassas_maskele, args_gizle as _args_gizle)
@@ -1019,6 +1022,8 @@ def _calistir_ic(gorev: str, mod: str | None, oturum: Oturum | None,
             return metin, None
 
         _olcum_yayinla(oturum, yanit, adim, toplam_cagri, son=False)
+        if yanit.metin and yanit.metin.strip():
+            oturum.yayinla(Olay(OlayTipi.YANIT_PARCASI, {"metin": yanit.metin, "bitti": True}))
         gecmis.append(yanit.icerik)
         sonuc_parcalari: list[tuple[str, str | None, str]] = []   # (ad, cagri id, metin)
         tur_sayaci: dict[str, int] = {}
@@ -1109,19 +1114,27 @@ def _calistir_ic(gorev: str, mod: str | None, oturum: Oturum | None,
                 elif fn is None:
                     metin = sonuc_hatasi(t("Bilinmeyen araç: {arac}", arac=gercek_ad))
                 else:
+                    eski_oturum = getattr(B, "oturum", None)
+                    B.oturum = oturum
                     try:
                         metin = fn(karar.yol, args)
                     except Exception as e:      # istisna dışarı sızmaz, metne döner
                         metin = sonuc_hatasi(t("{arac} çalışırken hata: {tur}: {mesaj}",
                                   arac=gercek_ad, tur=type(e).__name__, mesaj=e))
+                    finally:
+                        B.oturum = eski_oturum
                 basarili = getattr(metin, "basarili", True)
 
             print(f"          [{karar.sonuc}] -> {metin.splitlines()[0][:75]}...")
-            oturum.yayinla(Olay(OlayTipi.ARAC_SONUCU, {
-                "arac": gercek_ad, "sonuc": metin, "karar": karar.sonuc,
+            sonuc_olayi = {
+                "arac": gercek_ad, "sonuc": str(metin), "karar": karar.sonuc,
                 "basarili": basarili,
                 "sure_sn": round(time.monotonic() - baslangic, 2),
-            }))
+            }
+            ek_veri = getattr(metin, "ek", None)
+            if isinstance(ek_veri, dict):
+                sonuc_olayi["ek"] = ek_veri
+            oturum.yayinla(Olay(OlayTipi.ARAC_SONUCU, sonuc_olayi))
             _tarayici_karesi(oturum, gercek_ad)
             sonuc_parcalari.append((c.ad, c.id, metin))
 

@@ -82,10 +82,12 @@ olarak kullanır; dosya sistemi, tarayıcı ve MCP araçlarını tek bir denetim
 
 > Paket adı `pevrai`.
 
-**Kabuk erişimi yoktur ve olmayacaktır.** Genel bir komut çalıştırıcı (`shell.run`),
-kabuk erişimi ve model tarafından üretilmiş kodun çalıştırılması Faz 7'de yazılı
-olarak reddedildi — gerekçe: `DEVIR.md` §14. Kapı "bu programı çalıştırabilir misin"
-diye bakabilir, "bu program çalışınca ne yapacak" diye bakamaz.
+**Denetimli terminal ve açık pencere masaüstü kontrolü (0.1.3+):** Ajan çalışma
+klasörü (`kum/`) içinde salt-okuma inceleme komutlarını çalıştırabilir; dosya
+yazma, paket kurma veya silme içeren terminal komutları kullanıcı onayı ister,
+tehlikeli sistem/ağ komutları ise kesin olarak engellenir. Masaüstü kontrolü
+yalnızca **zaten açık olan** pencereleri okur ve kontrol eder; kapalı bir programı
+asla kendi kendine açmaz ve parola/güvenlik pencerelerine dokunamaz.
 
 ## Ne değildir
 
@@ -95,8 +97,8 @@ Kapsamı baştan daraltmak, projenin bitmesinin tek şartı:
 - Tam otonom değildir. Riskli her adımda kullanıcıya sorar. Hedef "denetimli ajan".
 - Genel amaçlı bir asistan olmaya çalışmaz. Sadece kullanıcının tekrar eden işlerini yapar.
 - Çok kullanıcılı, sunucuya kurulan bir servis değildir. Tek makine, tek kullanıcı.
-- Kod çalıştırmaz. Kod yazabilir (`write_file` keyfi metin yazar), ama çalıştıran
-  hiçbir araç yoktur ve eklenmeyecektir.
+- Denetimsiz kabuk veya kapalı program başlatma yetkisi yoktur. Riskli her terminal
+  komutu ve program açılışı (`open_item`) açık kullanıcı onayı gerektirir.
 - Talimatı yalnızca kullanıcıdan alır. Web sayfası, PDF, araç çıktısı, araç hata
   mesajı, durum dosyası, MCP dönüşü — hiçbiri talimat kaynağı değildir; hepsi
   `<untrusted_content>` içinde veri olarak gelir (bkz. [SECURITY.md](SECURITY.md)).
@@ -241,8 +243,7 @@ Yerel inceleme için `python -m pevrai --tani-ayrintili` yolları ve hata
 ayrıntılarını gösterir. Çıktıyı paylaşmadan önce incele; kişisel bilgiler veya
 hataya gömülmüş sırlar içerebilir.
 
-Bu değişiklikler şu anda kaynakta bulunuyor; yayımlanmış 0.1.1 kurulumuna
-henüz dahil değildir.
+Bu tanılama iyileştirmeleri Pevrai 0.1.3 sürümüne dahildir.
 
 ## Belgeler
 

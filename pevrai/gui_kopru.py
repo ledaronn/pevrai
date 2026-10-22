@@ -236,10 +236,11 @@ class Kopru:
         Arka planda kalan bir sohbetin olaylari kuyruga girmez; yoksa baska bir
         sohbetin akisi ekrandakine karisirdi.
         """
-        # Tarayici kareleri arsive GIRMEZ: kare basina 100+ KB, 400 olaylik bir
-        # arsiv onlarca megabayta cikardi. Kare anlik bir gorunum; sohbet
-        # gecmisinde saklanmasinin degeri yok, maliyeti buyuk.
-        if olay.tip is OlayTipi.TARAYICI:
+        # Tarayici kareleri, canli terminal satirlari ve akis (token) parcalari
+        # arsive GIRMEZ: ARAC_SONUCU ve nihai YANIT_PARCASI (bitti=True) zaten arsive yazilir.
+        if olay.tip in (OlayTipi.TARAYICI, OlayTipi.TERMINAL_CIKTI) or (
+            olay.tip is OlayTipi.YANIT_PARCASI and olay.veri.get("akis") is True
+        ):
             if sohbet is self._aktif:
                 self._olaylar.put(olay)
             return
@@ -279,8 +280,9 @@ class Kopru:
         # Arac daraltmasi da ayni sinifta: bos sohbette araclari kapatip "yeni
         # sohbet" diyen kullanici varsayilani bekler (testte yakalandi).
         o = self.oturum
-        if (not self._aktif["arsiv"] and not o.aktif_toplu_onaylar() and not o.gecmis_al()
-                and not o.hepsi_kapali() and not o.kapali_araclar() and not o.proje_baglami):
+        if (not self._aktif["arsiv"] and not o.aktif_toplu_onaylar() and not o.onayli_pencereler()
+                and not o.gecmis_al() and not o.hepsi_kapali() and not o.kapali_araclar()
+                and not o.proje_baglami):
             return self._aktif["id"]
         self._aktif = self._sohbet_yarat(gecmis_koru=self.oturum.gecmis_koru)
         self._bosalt(self._olaylar)

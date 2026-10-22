@@ -1,3 +1,14 @@
+## Pevrai 0.1.3
+
+- **Terminal access & live file diffs (`terminal_run`):** Supervised command execution inside configured workspace write roots (`kum/`) with a Claude Code-style black `.terminal-kart` UI showing the command, live waiting/running state, exit code, stdout/stderr output, and automatic `+` / `-` line-by-line file diffs (`dosya_farklari`). Read-only inspection commands (`git status`, `git diff`, `pytest -q`, `dir`, etc.) run automatically while write/install/destructive commands require explicit user confirmation and dangerous system/network-exec commands (`Format-Volume`, `Invoke-Expression`, `reg delete`, etc.) are hard-blocked.
+- **Partial desktop window control (`window_list`, `window_read`, `window_click`, `window_type`, `window_key`):** Native Windows UI Automation (`UIAutomationCore.dll` / `user32.dll`) tools to inspect and interact with **already open** desktop applications. Closed programs are never launched automatically (the agent directs to approval-gated `open_item`), sensitive windows (Password Manager, KeePass, Bitwarden, Windows Security, Credential Manager, Registry Editor, Pevrai itself) are blocklisted, and critical buttons (`Delete`, `Format`, `Send`, `Publish`, `Pay`) or dangerous hotkeys (`Alt+F4`, `Ctrl+W`) always trigger extra confirmation.
+- **UI & streaming polish:** Removed the orange focus border on the chat input box; fixed live token streaming transitions before tool calls and approval cards (`akisParcasiEkle`, `aktifAkis` cleanup).
+
+**Türkçe:**
+- **Terminal erişimi ve canlı değişiklik kartı (`terminal_run`):** Çalışma klasörü (`kum/`) içinde denetimli komut çalıştırma, Claude Code tarzı siyah `.terminal-kart` arayüzü (komut, onay/çalışma durumu, çıkış kodu, stdout/stderr ve değiştirilen dosyalarda otomatik `+`/`-` satır farkı önizlemesi). Salt-okuma komutları (`git status`, `git diff`, `pytest -q`, `dir` vb.) onaysız çalışır; yazma/paket kurma/silme komutları onay ister; tehlikeli sistem/uzaktan kod çalıştırma komutları (`Format-Volume`, `Invoke-Expression`, `reg delete` vb.) kesin olarak engellenir.
+- **Kısmi masaüstü pencere kontrolü (`window_list`, `window_read`, `window_click`, `window_type`, `window_key`):** Windows UI Automation (`UIAutomationCore.dll` / `user32.dll`) ile **yalnızca açık olan** masaüstü pencerelerini okuma ve kontrol etme. Kapalı programlar asla kendi kendine açılmaz (onaylı `open_item` aracına yönlendirilir), parola yöneticileri ve güvenlik pencereleri kara listededir, kritik düğmeler (`Sil`, `Gönder`, `Yayınla`, `Öde`) ve tehlikeli kısayollar (`Alt+F4`, `Ctrl+W`) ek onay ister.
+- **Arayüz ve akış iyileştirmeleri:** Sohbet yazma kutusundaki turuncu odak çerçevesi kaldırıldı; araç çağrısı ve onay kartı öncesinde canlı akış (`akisParcasiEkle`) geçişleri düzeltildi.
+
 ## Pevrai 0.1.2
 
 - **Streaming responses:** Real-time token streaming across Gemini, OpenAI-compatible, and Anthropic providers with instant cancellation support.

@@ -84,6 +84,22 @@ _PAKET_KIMLIK: dict[str, dict[str, Any]] = {
         "aciklama": ("Chrome'u ayrı bir profille açar; izinli sitelerde okur, tıklar, form "
                      "doldurur ve indirir. Parola ve kart bilgisi girmez."),
     },
+    "terminal": {
+        "ad": "Terminal",
+        "ikon": "terminal",
+        "cekirdek": False,
+        "aciklama": ("İzinli klasörlerde terminal komutu çalıştırır ve yapılan dosya "
+                     "değişikliklerini gösterir. Salt okunur komutlar doğrudan, yazan ve "
+                     "riskli komutlar onayla çalışır."),
+    },
+    "masaustu": {
+        "ad": "Masaüstü kontrolü",
+        "ikon": "bilgisayar",
+        "cekirdek": False,
+        "aciklama": ("Yalnızca bilgisayarda zaten açık olan pencereleri listeler, okur ve "
+                     "onayla kontrol eder. Kendi kendine program açmaz; parola ve ödeme "
+                     "alanlarına dokunmaz."),
+    },
 }
 
 YERLESIK: dict[str, dict[str, Any]] = {

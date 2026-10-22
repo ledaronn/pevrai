@@ -109,6 +109,13 @@ browser_click    = "WRITE_HAFIF"     # "gonder/satin al/ode/sil" kaliplari kod s
 browser_fill     = "WRITE_HAFIF"     # parola/kart reddi kod seviyesinde duruyor
 browser_download = "DESTRUCTIVE"
 
+terminal_run     = "WRITE"           # salt okunur komutlar ALLOW, yazan/zincirli komutlar ASK, yikicilar her seferinde ASK
+window_list      = "READ"            # yalnizca acik pencereleri listeler
+window_read      = "READ"            # acik pencerenin erisilebilirlik agacini okur
+window_click     = "WRITE_HAFIF"     # acik pencerede ilk etkilesim ve kritik dugmeler ASK
+window_type      = "WRITE_HAFIF"     # acik pencerede ilk etkilesim ve submit=true ASK; parola alani DENY
+window_key       = "WRITE_HAFIF"     # acik pencerede ilk etkilesim ve kritik tuslar ASK
+
 # ---------------------------------------------------------------------------
 # Acma klasoru: open_file'in acabildigi TEK yer. Icine koydugun dosya
 # (ilisikli programla acilir), kisayol (.lnk, hedefiyle acilir) ya da program

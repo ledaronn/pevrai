@@ -23,6 +23,7 @@ class _Baglam:
     ajan: dict | None = None          # ekip iscisi: [ajanlar.<ad>] tanimi (model.kur(ajan=))
     ajan_adi: str | None = None       # journal kaydina "ajan"
     ekip_pano: str | None = None      # ekip iscisi: pano.jsonl yolu (araclar/ekip_pano)
+    oturum: Any = None                # aktif gorev oturumu (terminal canli cikti ve durdurma icin)
 
 
 B = _Baglam()

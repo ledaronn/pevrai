@@ -26,6 +26,7 @@ PAKETLER = [
     ("ceviri_testi.py", False),
     ("ocr_testi.py", False),
     ("acma_testi.py", False),
+    ("terminal_masaustu_testi.py", False),
     ("ag_testi.py", False),
     ("ekip_testi.py", False),
     ("ekip_pano_testi.py", False),

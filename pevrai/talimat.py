@@ -141,6 +141,15 @@ def talimat_cumleleri(gosterilen: frozenset[str], erisim: _Erisim,
                    "Gidebildiğin siteler: {liste} (alt alanlar dahil). "
                    "Web'de araştırma istenirse bu araçları kullan; yetkin yok deme.",
                    liste=", ".join(siteler)))
+    if "terminal_run" in gosterilen:
+        c.append(t("Terminal erişimin var: terminal_run ile izinli klasörlerde komut çalıştırabilirsin "
+                   "(cwd tam yol olmalı). Salt okunur komutlar doğrudan, yazan veya zincirli komutlar "
+                   "kullanıcı onayıyla çalışır ve yapılan dosya değişiklikleri ekranda gösterilir."))
+    if "window_list" in gosterilen or "window_read" in gosterilen:
+        c.append(t("Masaüstü pencere kontrolün var (window_list, window_read, window_click, window_type, "
+                   "window_key): YALNIZCA bilgisayarda zaten açık olan pencereleri kontrol edebilirsin. "
+                   "Kapalı bir programı masaüstü araçlarıyla ASLA başlatamazsın; program kapalıysa "
+                   "kullanıcıya söyle veya açma klasöründeyse open_file ile onay isteyerek aç."))
     c.extend(_niyet_cumleleri(gosterilen))
     # Kurulu aglar VERIDEN: ajan hangi agin ne zaman ise yaradigini ARAC
     # CAGIRMADAN bilsin. Aksi halde "bu haftayi ozetle" dendiginde ilgili agin
@@ -175,6 +184,12 @@ def _niyet_cumleleri(gosterilen: frozenset[str]) -> list[str]:
     if "open_file" in gosterilen:
         c.append(t("'Şunu aç', 'şunu çalıştır', 'başlat' gibi bir istek open_file demektir: açma "
                    "klasöründeki adı yeterlidir, tam yol aramana gerek yok."))
+    if "terminal_run" in gosterilen:
+        c.append(t("'Terminalde çalıştır', 'testleri koş', 'git durumuna bak', 'komut çalıştır' gibi "
+                   "istekler terminal_run demektir; çalışma klasörü (cwd) olarak izinli bir kök ver."))
+    if "window_list" in gosterilen:
+        c.append(t("'Açık programa bak', 'şu pencerede şuna tıkla/yaz' gibi isteklerde önce window_list "
+                   "ve window_read ile açık pencereyi oku, sonra window_click/window_type/window_key kullan."))
     if "converter.convert" in gosterilen:
         c.append(t("'Şunu dönüştür', 'PDF yap', 'Word'e çevir' gibi istekler converter.convert ile yapılır."))
     if "read_document" in gosterilen:

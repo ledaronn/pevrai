@@ -117,7 +117,8 @@ def main() -> int:
     ek = {k["ad"]: k["secili"] for k in d["ek_klasorler"]}
     dogrula(ek == {"Downloads": True, "Desktop": True, "Documents": False}, f"ek okuma klasorleri: {ek}")
     paket = {p["ad"]: p["acik"] for p in d["paketler"]}
-    dogrula("tarayici" in paket and "ekip" not in paket, f"secilebilir paketler (gizli yok): {sorted(paket)}")
+    dogrula("tarayici" in paket and "terminal" in paket and "masaustu" in paket and "ekip" not in paket,
+            f"secilebilir paketler (terminal, masaustu dahil; gizli yok): {sorted(paket)}")
     (ev / "Pevrai" / ".gitkeep").unlink(missing_ok=True)
     hatalar = ayarlar.kurulum_uygula({
         "dil": "tr", "tema": "acik", "ekip_gorunumu": "kart",

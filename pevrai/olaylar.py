@@ -34,6 +34,7 @@ class OlayTipi(str, Enum):
     EKIP_MESAJ = "ekip_mesaj"          # veri: kimden, kime, metin (pano) | ajan, teslim (iscide teslim)
     MODEL_GECIS = "model_gecis"        # veri: eski, yeni (etiket), sebep ("limit" | "anahtar"), bitis
     BEKLEME = "bekleme"                # veri: sn, sebep (yeniden deneme)
+    TERMINAL_CIKTI = "terminal_cikti"  # veri: komut, cwd, parca (canli satir akisi)
 
 
 @dataclass(frozen=True)
@@ -147,6 +148,8 @@ class Oturum:
     durdur_bayragi: threading.Event = field(default_factory=threading.Event)
     gecmis_koru: bool = True
     _toplu: set[str] = field(default_factory=set)
+    _onayli_pencereler: set[str] = field(default_factory=set)
+    _onayli_komutlar: set[str] = field(default_factory=set)
     _gecmis: list[Any] = field(default_factory=list)
     _gorev_indisleri: list[int] = field(default_factory=list)
     # Araclar paneli: bu SOHBETTE modele gosterilmeyecek araclar. Toplu
@@ -172,11 +175,36 @@ class Oturum:
         """Kenar cubugundaki 'aktif toplu onaylar' listesinden iptal icin."""
         if arac is None:
             self._toplu.clear()
+            self._onayli_pencereler.clear()
+            self._onayli_komutlar.clear()
         else:
             self._toplu.discard(arac)
 
     def aktif_toplu_onaylar(self) -> list[str]:
         return sorted(self._toplu)
+
+    # --- masaustu pencere onayi (oturum boyunca acik pencereye ilk etkilesimden sonra) ---
+    def pencere_onayli(self, pencere: str) -> bool:
+        k = (pencere or "").strip().casefold()
+        return bool(k) and k in self._onayli_pencereler
+
+    def pencere_onayla(self, pencere: str) -> None:
+        k = (pencere or "").strip().casefold()
+        if k:
+            self._onayli_pencereler.add(k)
+
+    def onayli_pencereler(self) -> list[str]:
+        return sorted(self._onayli_pencereler)
+
+    # --- terminal komut kalibi onayi (oturum boyunca ayni komut/on-ek icin) ---
+    def komut_onayli(self, komut_anahtari: str) -> bool:
+        k = (komut_anahtari or "").strip().casefold()
+        return bool(k) and k in self._onayli_komutlar
+
+    def komut_onayla(self, komut_anahtari: str) -> None:
+        k = (komut_anahtari or "").strip().casefold()
+        if k:
+            self._onayli_komutlar.add(k)
 
     # --- arac daraltmasi (Araclar paneli / sohbet anahtari) ---
     def kapali_araclar(self) -> list[str]:

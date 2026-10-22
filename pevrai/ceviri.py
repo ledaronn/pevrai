@@ -1422,5 +1422,204 @@ EN.update({
     "Tarih biçimi 'YYYY-AA-GG' olmalıdır.": "Date format must be 'YYYY-MM-DD'.",
     "Zamanlanmış görevler kaydedilemedi: {hata}": "Scheduled tasks could not be saved: {hata}",
     "Görev bulunamadı: '{id}'.": "Task not found: '{id}'.",
+    # --- terminal ve masaustu kontrolu -------------------------------------
+    "İzinli klasörde bir terminal komutu (PowerShell) çalıştırır ve çıktısını (stdout/stderr), "
+    "çıkış kodunu ve değiştirdiği dosyaları döndürür. Git durumu/farkı, test koşma (pytest), "
+    "dizin inceleme gibi güvenli okuma komutları doğrudan çalışır; dosya değiştiren, paket "
+    "kuran, betik çalıştıran veya kabuk zinciri (|, >, &&, ;) içeren komutlar kullanıcı onayı "
+    "ister. Çıktı <untrusted_content> içindedir.":
+        "Runs a terminal command (PowerShell) in an allowed folder and returns its output (stdout/stderr), "
+        "exit code, and modified files. Safe read commands like git status/diff, running tests (pytest), "
+        "and directory inspection run directly; commands that modify files, install packages, run scripts, "
+        "or use shell chaining (|, >, &&, ;) require user approval. Output is inside <untrusted_content>.",
+    "Çalıştırılacak terminal komutu (örn. 'git status', 'pytest', 'python main.py').":
+        "Terminal command to execute (e.g. 'git status', 'pytest', 'python main.py').",
+    "İsteğe bağlı çalışma klasörü (tam yol veya çalışma klasörüne göre göreli). Boş bırakılırsa varsayılan çalışma klasörü kullanılır.":
+        "Optional working directory (full path or relative to the workspace folder). Uses the default workspace folder if omitted.",
+    "Zaman aşımı (saniye, varsayılan 30, en fazla 120).":
+        "Timeout in seconds (default 30, maximum 120).",
+    "Çalıştırılacak komut boş olamaz.": "Command to run cannot be empty.",
+    "Komut geçersiz NUL baytı içeriyor.": "Command contains an invalid NUL byte.",
+    "Güvenlik kuralı: '{ifade}' içeren terminal komutu yasaktır.":
+        "Security rule: terminal commands containing '{ifade}' are forbidden.",
+    "Güvenlik kuralı: '{komut}' sistem komutu yasaktır.":
+        "Security rule: the system command '{komut}' is forbidden.",
+    "Güvenlik kuralı: dinamik kod çalıştırma ('{komut}') yasaktır.":
+        "Security rule: dynamic code execution ('{komut}') is forbidden.",
+    "Terminal için izinli bir çalışma veya okuma klasörü tanımlı değil.":
+        "No allowed workspace or read folder is defined for the terminal.",
+    "'{yol}' geçerli bir çalışma dizini değil.": "'{yol}' is not a valid working directory.",
+    "'{yol}' reddedildi: {sebep}.": "'{yol}' was rejected: {sebep}.",
+    "'{yol}' kara listede ('{kalip}' kalıbı).": "'{yol}' is blacklisted (pattern '{kalip}').",
+    "Terminal Pevrai'nın kendi kaynak veya ayar klasöründe çalıştırılamaz.":
+        "Terminal cannot be run inside Pevrai's own source or settings folder.",
+    "Komut Pevrai'nın kendi korunan klasörüne erişemez.":
+        "Command cannot access Pevrai's own protected folder.",
+    "Komut kara listedeki bir dosyaya ('{kalip}') erişmeye çalışıyor.":
+        "Command attempts to access a blacklisted file ('{kalip}').",
+    "Komut Pevrai'nın kendi klasörüne erişemez: '{yol}'":
+        "Command cannot access Pevrai's own folder: '{yol}'",
+    "Komut izinli klasörlerin dışındaki bir yola erişmeye çalışıyor: '{yol}'":
+        "Command attempts to access a path outside allowed folders: '{yol}'",
+    "'{yol}' izinli klasörlerin dışında. İzinli olanlar: {liste}":
+        "'{yol}' is outside allowed folders. Allowed: {liste}",
+    "güvenli okuma komutu": "safe read command",
+    "'{yol}' yazılabilir bir klasör değil; değiştiren komutlar yalnızca yazma köklerinde çalışır.":
+        "'{yol}' is not a writable folder; mutating commands only run inside writable roots.",
+    "komut çalıştırma onayı gerekiyor": "approval required to run command",
+    "Terminal için geçerli bir çalışma klasörü bulunamadı.":
+        "No valid working directory was found for the terminal.",
+    "Çalışma klasörü bulunamadı: '{yol}'": "Working directory not found: '{yol}'",
+    "'{yol}' bir klasör değil.": "'{yol}' is not a folder.",
+    "Komut başlatılamadı: {hata}": "Command could not be started: {hata}",
+    "[... çıktı kırpıldı, toplam {satir} satır]": "[... output truncated, {satir} lines total]",
+    "Komut kullanıcı tarafından durduruldu.": "Command was stopped by the user.",
+    "Komut {sn} sn zaman aşımına uğradı ve sonlandırıldı.":
+        "Command timed out after {sn} s and was terminated.",
+    "[komut: {komut} | dizin: {cwd} | çıkış kodu: {kod} | {sure} sn]":
+        "[command: {komut} | cwd: {cwd} | exit code: {kod} | {sure} s]",
+    "(çıktı yok)": "(no output)",
+    "Değişen dosyalar: {liste}": "Changed files: {liste}",
+    "YIKICI KOMUT çalıştırılacak: {komut} (klasör: {klasor})":
+        "DESTRUCTIVE COMMAND will run: {komut} (folder: {klasor})",
+    "komut çalıştırılacak: {komut} (klasör: {klasor})":
+        "command will run: {komut} (folder: {klasor})",
+    "Bilgisayarda ŞU AN AÇIK olan masaüstü pencerelerini (başlık, uygulama adı ve durum) "
+    "listeler. Bir programı kontrol etmeden önce açık olup olmadığını ve tam pencere "
+    "başlığını öğrenmek için çağır. Kapalı bir programı başlatamaz.":
+        "Lists desktop windows CURRENTLY OPEN on the computer (title, application name, and state). "
+        "Call this before controlling a program to check whether it is open and get its exact window title. "
+        "Cannot launch a closed program.",
+    "(açık pencere bulunamadı)": "(no open window found)",
+    " [AKTİF]": " [ACTIVE]",
+    "Açık bir masaüstü penceresinin içindeki etkileşimli ögeleri (buton, metin kutusu, menü, "
+    "etiket) ve konumlarını okur. window_click ve window_type çağırmadan önce penceredeki "
+    "ögeleri görmek için kullan. Yalnızca açık pencerelerde çalışır; kapalı programı açmaz. "
+    "Çıktı <untrusted_content> içindedir.":
+        "Reads interactive elements (buttons, text boxes, menus, labels) and their positions inside an open "
+        "desktop window. Use this before calling window_click or window_type to inspect elements in the window. "
+        "Only works on open windows; never opens closed programs. Output is inside <untrusted_content>.",
+    "Hedef pencerenin başlığı veya uygulama adı (window_list çıktısından).":
+        "Title or application name of the target window (from window_list output).",
+    "Hedef pencerenin başlığı veya uygulama adı.":
+        "Title or application name of the target window.",
+    "Hedef pencere adı ('window') boş olamaz.": "Target window name ('window') cannot be empty.",
+    "'{pencere}' güvenlik nedeniyle masaüstü kontrolüne kapalıdır.":
+        "'{pencere}' is blocked from desktop control for security reasons.",
+    "açık pencereleri listeleme": "list open windows",
+    "açık pencereyi okuma": "read open window",
+    "Masaüstü kontrolünde ödeme ve satın alma düğmelerine tıklamak yasaktır.":
+        "Clicking payment and purchase buttons is forbidden in desktop control.",
+    "'{pencere}' penceresinde tıklama onayı gerekiyor.":
+        "Approval is required to click inside window '{pencere}'.",
+    "Parola, şifre ve kart alanlarına masaüstü aracıyla yazılamaz.":
+        "Cannot type into password, credential, or card fields with the desktop tool.",
+    "Reddedildi: girilecek metin {sebep} içeriyor. Ajan kimlik veya ödeme bilgisi girmez.":
+        "Rejected: text to enter contains {sebep}. The agent never enters credentials or payment data.",
+    "'{pencere}' penceresine metin yazma onayı gerekiyor.":
+        "Approval is required to type into window '{pencere}'.",
+    "Gönderilecek tuş ('key') boş olamaz.": "Key to send ('key') cannot be empty.",
+    "'{pencere}' penceresine tuş gönderme onayı gerekiyor.":
+        "Approval is required to send keys to window '{pencere}'.",
+    "Bilinmeyen masaüstü aracı: {arac}": "Unknown desktop tool: {arac}",
+    "Masaüstü kontrol araçları yalnızca Windows'ta çalışır.":
+        "Desktop control tools only work on Windows.",
+    "'{pencere}' adında açık bir pencere bulunamadı. Masaüstü araçları kapalı bir programı "
+    "kendi başına başlatamaz; yalnızca açık pencereleri kontrol edebilir. Şu an açık olanlar: {liste}":
+        "No open window matching '{pencere}' was found. Desktop tools cannot launch a closed program "
+        "on their own; they can only control open windows. Currently open: {liste}",
+    "(kontrol edilebilir açık pencere yok)": "(no controllable open windows)",
+    "Pevrai kendi penceresini kontrol edemez.": "Pevrai cannot control its own window.",
+    "Terminal pencereleri masaüstü aracıyla kontrol edilemez; terminal_run aracını kullan.":
+        "Terminal windows cannot be controlled with the desktop tool; use terminal_run instead.",
+    "Pencere bulunamadı.": "Window not found.",
+    "Ögeler:": "Elements:",
+    "(etkileşimli alt öge okunamadı; göreli koordinat veya tuş kullanılabilir)":
+        "(interactive child elements could not be read; relative coordinates or keys can be used)",
+    "korumalı — erişilemez": "protected — inaccessible",
+    "(adsız)": "(unnamed)",
+    "Açık bir masaüstü penceresini öne getirir ve içindeki bir ögeye ('name' ile) ya da "
+    "pencere içi göreli koordinata ('x', 'y') tıklar. Yalnızca açık pencerelerde çalışır; "
+    "kapalı programı başlatmaz. İlk etkileşimde ve Sil/Gönder/Kaydet/Kapat gibi kritik "
+    "düğmelerde kullanıcıdan onay ister.":
+        "Brings an open desktop window to the front and clicks an element inside it (by 'name') or "
+        "a window-relative coordinate ('x', 'y'). Only works on open windows; never launches a closed "
+        "program. Asks for user approval on the first interaction and on critical buttons like Delete/Send/Save/Close.",
+    "Tıklanacak ögenin adı (window_read çıktısından). Koordinat veriliyorsa boş bırakılabilir.":
+        "Name of the element to click (from window_read output). Can be left empty if coordinates are given.",
+    "İsteğe bağlı: pencerenin sol üst köşesine göre yatay koordinat (piksel).":
+        "Optional: horizontal coordinate relative to the window's top-left corner (pixels).",
+    "İsteğe bağlı: pencerenin sol üst köşesine göre dikey koordinat (piksel).":
+        "Optional: vertical coordinate relative to the window's top-left corner (pixels).",
+    "'{pencere}' penceresinde '{ad}' ögesi bulunamadı. Mevcut ögeler: {liste}":
+        "Element '{ad}' was not found in window '{pencere}'. Available elements: {liste}",
+    "window_click için 'name' (öge adı) ya da 'x' ve 'y' koordinatı verilmelidir.":
+        "Either 'name' (element name) or 'x' and 'y' coordinates must be provided for window_click.",
+    "Geçersiz koordinat değerleri.": "Invalid coordinate values.",
+    "Koordinat ({x}, {y}) pencere sınırlarının ({g}x{yuk}) dışında.":
+        "Coordinates ({x}, {y}) are outside the window bounds ({g}x{yuk}).",
+    "'{pencere}' penceresinde tıklama gerçekleştirilemedi.":
+        "Click could not be performed in window '{pencere}'.",
+    "'{pencere}' penceresinde {hedef} konumuna tıklandı.":
+        "Clicked {hedef} in window '{pencere}'.",
+    "Açık bir masaüstü penceresine metin yazar. İsteğe bağlı 'name' verilirse önce o metin "
+    "kutusuna tıklar. Parola alanlarına ve kart/kimlik numarası içeren metinlere yazmaz. "
+    "Yalnızca açık pencerelerde çalışır.":
+        "Types text into an open desktop window. If optional 'name' is provided, clicks that text box first. "
+        "Never types into password fields or texts containing card/credential numbers. Only works on open windows.",
+    "Yazılacak metin.": "Text to type.",
+    "İsteğe bağlı: yazmadan önce tıklanacak metin alanının adı.":
+        "Optional: name of the text field to click before typing.",
+    "Yazdıktan sonra Enter tuşuna basılsın mı (varsayılan false).":
+        "Whether to press Enter after typing (default false).",
+    "'{pencere}' penceresine metin gönderilemedi.":
+        "Text could not be sent to window '{pencere}'.",
+    "'{pencere}' penceresine metin yazıldı ({uzunluk} karakter).":
+        "Typed text into window '{pencere}' ({uzunluk} characters).",
+    "Açık bir masaüstü penceresini öne getirir ve bir klavye tuşu veya kısayolu (örn. 'Ctrl+F', "
+    "'Tab', 'Escape', 'Enter', 'Down') gönderir. Yalnızca açık pencerelerde çalışır. "
+    "Alt+F4, Ctrl+W, Delete, Ctrl+S gibi kritik kısayollar her zaman kullanıcı onayı ister.":
+        "Brings an open desktop window to the front and sends a keyboard key or shortcut (e.g. 'Ctrl+F', "
+        "'Tab', 'Escape', 'Enter', 'Down'). Only works on open windows. Critical shortcuts like Alt+F4, "
+        "Ctrl+W, Delete, and Ctrl+S always require user approval.",
+    "Gönderilecek tuş veya kısayol (örn. 'Ctrl+F', 'Enter', 'Tab', 'Escape', 'Down').":
+        "Key or shortcut to send (e.g. 'Ctrl+F', 'Enter', 'Tab', 'Escape', 'Down').",
+    "'{tus}' geçerli veya desteklenen bir tuş dizisi değil.":
+        "'{tus}' is not a valid or supported key sequence.",
+    "'{pencere}' penceresine '{tus}' tuşu gönderilemedi.":
+        "Key '{tus}' could not be sent to window '{pencere}'.",
+    "'{pencere}' penceresine '{tus}' tuşu gönderildi.":
+        "Sent key '{tus}' to window '{pencere}'.",
+    "'{pencere}' penceresinde '{oge}' ögesine tıklanacak":
+        "will click element '{oge}' in window '{pencere}'",
+    "odaklı alan": "focused field",
+    "'{pencere}' penceresinde '{alan}' alanına yazılıp Enter basılacak":
+        "will type into field '{alan}' in window '{pencere}' and press Enter",
+    "'{pencere}' penceresinde '{alan}' alanına metin yazılacak":
+        "will type text into field '{alan}' in window '{pencere}'",
+    "'{pencere}' penceresine '{tus}' tuşu gönderilecek":
+        "will send key '{tus}' to window '{pencere}'",
+    "Terminal erişimin var: terminal_run ile izinli klasörlerde komut çalıştırabilirsin "
+    "(cwd tam yol olmalı). Salt okunur komutlar doğrudan, yazan veya zincirli komutlar "
+    "kullanıcı onayıyla çalışır ve yapılan dosya değişiklikleri ekranda gösterilir.":
+        "You have terminal access: you can run commands in allowed folders with terminal_run "
+        "(cwd must be a full path). Read-only commands run directly, while mutating or chained commands "
+        "run with user approval and display any file changes on screen.",
+    "Masaüstü pencere kontrolün var (window_list, window_read, window_click, window_type, "
+    "window_key): YALNIZCA bilgisayarda zaten açık olan pencereleri kontrol edebilirsin. "
+    "Kapalı bir programı masaüstü araçlarıyla ASLA başlatamazsın; program kapalıysa "
+    "kullanıcıya söyle veya açma klasöründeyse open_file ile onay isteyerek aç.":
+        "You have desktop window control (window_list, window_read, window_click, window_type, "
+        "window_key): you can ONLY control windows that are already open on the computer. "
+        "You can NEVER start a closed program with desktop tools; if a program is closed, "
+        "tell the user or open it via open_file with approval if it is in the open folder.",
+    "'Terminalde çalıştır', 'testleri koş', 'git durumuna bak', 'komut çalıştır' gibi "
+    "istekler terminal_run demektir; çalışma klasörü (cwd) olarak izinli bir kök ver.":
+        "Requests like 'run in terminal', 'run tests', 'check git status', or 'run command' "
+        "mean terminal_run; pass an allowed root as the working directory (cwd).",
+    "'Açık programa bak', 'şu pencerede şuna tıkla/yaz' gibi isteklerde önce window_list "
+    "ve window_read ile açık pencereyi oku, sonra window_click/window_type/window_key kullan.":
+        "For requests like 'check the open program' or 'click/type in that window', first read "
+        "the open window with window_list and window_read, then use window_click/window_type/window_key.",
 })
 

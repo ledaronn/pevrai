@@ -181,11 +181,18 @@ from pevrai.gate_kurallar import (
     durum_karari,
     devam_karari,
     kok_karari,
+    terminal_karari,
+    terminal_yikici_mi,
+    terminal_komut_anahtari,
+    masaustu_karari,
+    masaustu_yikici_mi,
+    masaustu_yasakli_mi,
 )
 
 
 class Politika:
     def __init__(self, dosya: Path) -> None:
+        self._proje_koku = Path(dosya).expanduser().resolve().parent
         with open(dosya, "rb") as f:
             ham = tomllib.load(f)
 
@@ -749,6 +756,27 @@ class Politika:
         varsayilan = RISK_VARSAYILAN.get(risk)
         if varsayilan is None:
             return Karar(DENY, t("'{arac}' için bilinmeyen risk seviyesi: {risk}", arac=arac, risk=risk))
+
+        if arac == "terminal_run":
+            proje_koku = getattr(self, "_proje_koku", None) or Path(__file__).resolve().parent.parent
+            varsayilan_cwd = getattr(self, "calisma", None) or (
+                self.yazma[0] if self.yazma else (self.okuma[0] if self.okuma else None)
+            )
+            return terminal_karari(
+                str((args or {}).get("command", "")),
+                str((args or {}).get("cwd", "")),
+                self.okuma,
+                self.yazma,
+                self.yasak,
+                proje_koku,
+                varsayilan_cwd=varsayilan_cwd,
+            )
+
+        if arac.startswith("window_"):
+            m_karar = masaustu_karari(arac, args or {})
+            if m_karar.sonuc == ALLOW and varsayilan == ASK:
+                return Karar(ASK, f"{arac} ({risk})")
+            return m_karar
 
         if arac == "browser_open":
             url_karari = self.url_dogrula(args.get("url", ""))
